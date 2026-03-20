@@ -186,3 +186,279 @@ def query(payload: QueryRequest) -> QueryResponse:
         history_backend=status.backend,
         **safe_result,
     )
+
+
+# ============================================================================
+# PHASE 3: ANALYTICS ENDPOINTS
+# ============================================================================
+
+class DateRangeResponse(BaseModel):
+    min_date: str
+    max_date: str
+    distinct_dates: int
+    total_days: int
+    total_months: int
+
+
+class BusinessMetricsResponse(BaseModel):
+    total_deals: int
+    total_pipeline_value: float
+    sector_count: int
+    total_wo: int
+    total_wo_value: float
+    total_billed: float
+    total_collected: float
+    collection_rate_pct: float
+
+
+class PipelineDataResponse(BaseModel):
+    data: list[dict[str, Any]]
+    error: str | None = None
+
+
+@app.get("/analytics/date-ranges", response_model=DateRangeResponse)
+def get_date_ranges() -> DateRangeResponse:
+    """
+    Get total date horizon across both tables (Deals and Work Orders).
+    
+    Returns:
+        - min_date: Earliest date across all date columns
+        - max_date: Latest date across all date columns
+        - distinct_dates: Count of unique dates
+        - total_days: Total span in days
+        - total_months: Total span in months
+    """
+    try:
+        from founder_bi_agent.backend.sql.statistical_queries import get_statistical_query
+        from founder_bi_agent.backend.service import FounderBIService
+        
+        svc = FounderBIService()
+        query = get_statistical_query("date_horizon")
+        result_df = svc.execute_sql_query(query)
+        
+        if result_df.empty:
+            raise HTTPException(status_code=500, detail="No data returned from date_horizon query")
+        
+        row = result_df.iloc[0]
+        return DateRangeResponse(
+            min_date=str(row["min_date"]),
+            max_date=str(row["max_date"]),
+            distinct_dates=int(row["distinct_dates"]),
+            total_days=int(row["total_days"]),
+            total_months=int(row.get("total_months", 0)),
+        )
+    except Exception as exc:
+        logger.exception("get_date_ranges.error: %s", str(exc))
+        raise HTTPException(status_code=500, detail=f"Analytics error: {str(exc)}") from exc
+
+
+@app.get("/analytics/business-metrics", response_model=BusinessMetricsResponse)
+def get_business_metrics() -> BusinessMetricsResponse:
+    """
+    Get high-level KPIs: pipeline, work order, billing and collection metrics.
+    """
+    try:
+        from founder_bi_agent.backend.sql.statistical_queries import get_statistical_query
+        from founder_bi_agent.backend.service import FounderBIService
+        
+        svc = FounderBIService()
+        query = get_statistical_query("business_metrics")
+        result_df = svc.execute_sql_query(query)
+        
+        if result_df.empty:
+            raise HTTPException(status_code=500, detail="No data returned from business_metrics query")
+        
+        row = result_df.iloc[0]
+        return BusinessMetricsResponse(
+            total_deals=int(row["total_deals"]),
+            total_pipeline_value=float(row["total_pipeline_value"]),
+            sector_count=int(row["sector_count"]),
+            total_wo=int(row["total_wo"]),
+            total_wo_value=float(row["total_wo_value"]),
+            total_billed=float(row["total_billed"]),
+            total_collected=float(row["total_collected"]),
+            collection_rate_pct=float(row["collection_rate_pct"]),
+        )
+    except Exception as exc:
+        logger.exception("get_business_metrics.error: %s", str(exc))
+        raise HTTPException(status_code=500, detail=f"Analytics error: {str(exc)}") from exc
+
+
+@app.get("/analytics/deals-pipeline", response_model=PipelineDataResponse)
+def get_deals_pipeline() -> PipelineDataResponse:
+    """
+    Get deals segmented by pipeline stage.
+    """
+    try:
+        from founder_bi_agent.backend.sql.statistical_queries import get_statistical_query
+        from founder_bi_agent.backend.service import FounderBIService
+        
+        svc = FounderBIService()
+        query = get_statistical_query("deals_pipeline_stage")
+        result_df = svc.execute_sql_query(query)
+        
+        data = [_sanitize_for_json(row.to_dict()) for _, row in result_df.iterrows()]
+        return PipelineDataResponse(data=data)
+    except Exception as exc:
+        logger.exception("get_deals_pipeline.error: %s", str(exc))
+        return PipelineDataResponse(data=[], error=str(exc))
+
+
+@app.get("/analytics/deals-by-sector", response_model=PipelineDataResponse)
+def get_deals_by_sector() -> PipelineDataResponse:
+    """
+    Get deals segmented by sector/service.
+    """
+    try:
+        from founder_bi_agent.backend.sql.statistical_queries import get_statistical_query
+        from founder_bi_agent.backend.service import FounderBIService
+        
+        svc = FounderBIService()
+        query = get_statistical_query("deals_by_sector")
+        result_df = svc.execute_sql_query(query)
+        
+        data = [_sanitize_for_json(row.to_dict()) for _, row in result_df.iterrows()]
+        return PipelineDataResponse(data=data)
+    except Exception as exc:
+        logger.exception("get_deals_by_sector.error: %s", str(exc))
+        return PipelineDataResponse(data=[], error=str(exc))
+
+
+@app.get("/analytics/work-orders-by-status", response_model=PipelineDataResponse)
+def get_work_orders_by_status() -> PipelineDataResponse:
+    """
+    Get work orders segmented by execution status.
+    """
+    try:
+        from founder_bi_agent.backend.sql.statistical_queries import get_statistical_query
+        from founder_bi_agent.backend.service import FounderBIService
+        
+        svc = FounderBIService()
+        query = get_statistical_query("work_orders_by_status")
+        result_df = svc.execute_sql_query(query)
+        
+        data = [_sanitize_for_json(row.to_dict()) for _, row in result_df.iterrows()]
+        return PipelineDataResponse(data=data)
+    except Exception as exc:
+        logger.exception("get_work_orders_by_status.error: %s", str(exc))
+        return PipelineDataResponse(data=[], error=str(exc))
+
+
+@app.get("/analytics/work-orders-by-sector", response_model=PipelineDataResponse)
+def get_work_orders_by_sector_endpoint() -> PipelineDataResponse:
+    """
+    Get work orders segmented by sector.
+    """
+    try:
+        from founder_bi_agent.backend.sql.statistical_queries import get_statistical_query
+        from founder_bi_agent.backend.service import FounderBIService
+        
+        svc = FounderBIService()
+        query = get_statistical_query("work_orders_by_sector")
+        result_df = svc.execute_sql_query(query)
+        
+        data = [_sanitize_for_json(row.to_dict()) for _, row in result_df.iterrows()]
+        return PipelineDataResponse(data=data)
+    except Exception as exc:
+        logger.exception("get_work_orders_by_sector.error: %s", str(exc))
+        return PipelineDataResponse(data=[], error=str(exc))
+
+
+@app.get("/analytics/billing-summary", response_model=PipelineDataResponse)
+def get_billing_summary() -> PipelineDataResponse:
+    """
+    Get work order billing and collection funnel.
+    """
+    try:
+        from founder_bi_agent.backend.sql.statistical_queries import get_statistical_query
+        from founder_bi_agent.backend.service import FounderBIService
+        
+        svc = FounderBIService()
+        query = get_statistical_query("billing_summary")
+        result_df = svc.execute_sql_query(query)
+        
+        data = [_sanitize_for_json(row.to_dict()) for _, row in result_df.iterrows()]
+        return PipelineDataResponse(data=data)
+    except Exception as exc:
+        logger.exception("get_billing_summary.error: %s", str(exc))
+        return PipelineDataResponse(data=[], error=str(exc))
+
+
+@app.get("/analytics/monthly-deals", response_model=PipelineDataResponse)
+def get_monthly_deals() -> PipelineDataResponse:
+    """
+    Get time-series: deal creation and expected closure by month.
+    """
+    try:
+        from founder_bi_agent.backend.sql.statistical_queries import get_statistical_query
+        from founder_bi_agent.backend.service import FounderBIService
+        
+        svc = FounderBIService()
+        query = get_statistical_query("monthly_deals")
+        result_df = svc.execute_sql_query(query)
+        
+        data = [_sanitize_for_json(row.to_dict()) for _, row in result_df.iterrows()]
+        return PipelineDataResponse(data=data)
+    except Exception as exc:
+        logger.exception("get_monthly_deals.error: %s", str(exc))
+        return PipelineDataResponse(data=[], error=str(exc))
+
+
+@app.get("/analytics/monthly-revenue", response_model=PipelineDataResponse)
+def get_monthly_revenue() -> PipelineDataResponse:
+    """
+    Get time-series: work order project value and billing/collection by month.
+    """
+    try:
+        from founder_bi_agent.backend.sql.statistical_queries import get_statistical_query
+        from founder_bi_agent.backend.service import FounderBIService
+        
+        svc = FounderBIService()
+        query = get_statistical_query("monthly_revenue")
+        result_df = svc.execute_sql_query(query)
+        
+        data = [_sanitize_for_json(row.to_dict()) for _, row in result_df.iterrows()]
+        return PipelineDataResponse(data=data)
+    except Exception as exc:
+        logger.exception("get_monthly_revenue.error: %s", str(exc))
+        return PipelineDataResponse(data=[], error=str(exc))
+
+
+@app.get("/analytics/deal-status", response_model=PipelineDataResponse)
+def get_deal_status() -> PipelineDataResponse:
+    """
+    Get deal distribution by status (Open, On Hold, Won, Lost).
+    """
+    try:
+        from founder_bi_agent.backend.sql.statistical_queries import get_statistical_query
+        from founder_bi_agent.backend.service import FounderBIService
+        
+        svc = FounderBIService()
+        query = get_statistical_query("deal_status_dist")
+        result_df = svc.execute_sql_query(query)
+        
+        data = [_sanitize_for_json(row.to_dict()) for _, row in result_df.iterrows()]
+        return PipelineDataResponse(data=data)
+    except Exception as exc:
+        logger.exception("get_deal_status.error: %s", str(exc))
+        return PipelineDataResponse(data=[], error=str(exc))
+
+
+@app.get("/analytics/invoice-status", response_model=PipelineDataResponse)
+def get_invoice_status() -> PipelineDataResponse:
+    """
+    Get work order invoice/billing status breakdown.
+    """
+    try:
+        from founder_bi_agent.backend.sql.statistical_queries import get_statistical_query
+        from founder_bi_agent.backend.service import FounderBIService
+        
+        svc = FounderBIService()
+        query = get_statistical_query("wo_invoice_status")
+        result_df = svc.execute_sql_query(query)
+        
+        data = [_sanitize_for_json(row.to_dict()) for _, row in result_df.iterrows()]
+        return PipelineDataResponse(data=data)
+    except Exception as exc:
+        logger.exception("get_invoice_status.error: %s", str(exc))
+        return PipelineDataResponse(data=[], error=str(exc))

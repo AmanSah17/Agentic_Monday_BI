@@ -185,14 +185,20 @@ class GroqSQLPlanner:
     def generate_sql(
         self,
         question: str,
-        tables: dict[str, pd.DataFrame],
-        schema_hint: str = "",
-        history: list[dict[str, str]] | None = None,
+        schema_hint: str,
+        fallback_sql: str,
     ) -> str:
-        if not schema_hint:
-            schema_hint = build_schema_hint(tables)
-            
-        fallback_sql = generate_sql_heuristic(question, tables)
+        """
+        Translate natural language to SQL using Groq's high-speed endpoints.
+        
+        Args:
+            question: User's natural language query
+            schema_hint: Pre-built schema metadata (already formatted)
+            fallback_sql: Pre-computed heuristic SQL to return on failure
+        
+        Returns:
+            Valid DuckDB SQL string
+        """
         
         prompt = (
             "You are an expert DuckDB SQL data analyst. You write advanced analytical queries based on provided schemas.\n\n"
@@ -223,10 +229,10 @@ class GroqSQLPlanner:
                 
                 self.last_generation_meta = {
                     "provider": "groq",
-                    "mode": "success",
+                    "mode": "llm_sql_generated",
                     "used_model": model,
                     "attempted_models": candidates[: candidates.index(model) + 1],
-                    "errors": failures,
+                    "failures_before_success": failures,
                 }
                 return sql.strip()
             except Exception as model_exc:
@@ -234,10 +240,11 @@ class GroqSQLPlanner:
                 failures.append({"model": model, "error": error_text})
                 continue
 
+        # All models failed; return fallback
         self.last_generation_meta = {
             "provider": "groq",
-            "mode": "fallback_exception",
-            "error": failures[-1]["error"] if failures else "Unknown",
+            "mode": "fallback_heuristic",
+            "reason": "all_groq_models_exhausted",
             "attempted_models": candidates,
             "errors": failures,
         }

@@ -9,6 +9,8 @@ from dotenv import load_dotenv
 
 from founder_bi_agent.backend.config import AgentSettings
 from founder_bi_agent.backend.graph.workflow import build_graph
+from founder_bi_agent.backend.sql.duckdb_engine import DuckDBSession
+from founder_bi_agent.backend.tools.monday_bi_tools import MondayBITools
 
 
 def setup_env(settings: AgentSettings) -> None:
@@ -76,6 +78,29 @@ class FounderBIService:
             "table_schemas": state.get("table_schemas", {}),
             "traces": state.get("traces", []),
         }
+
+    def execute_sql_query(self, sql: str) -> pd.DataFrame:
+        """
+        Execute a raw SQL query against the live Monday.com data.
+        Used by analytics endpoints for deterministic queries.
+        
+        Args:
+            sql: Valid DuckDB SQL query string
+            
+        Returns:
+            pandas DataFrame with results
+            
+        Raises:
+            Exception: If SQL execution fails
+        """
+        tools = MondayBITools(self.settings)
+        # Use the underlying client's fetch_relevant_tables to get both tables
+        tables = self.settings.monday_mode  # Check if using MCP or GraphQL
+        client = tools.client
+        tables = client.fetch_relevant_tables()
+        db = DuckDBSession()
+        db.register_tables(tables)
+        return db.query(sql)
 
 
 def run_founder_query(
