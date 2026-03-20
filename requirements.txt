@@ -1,0 +1,14 @@
+fastmcp>=3.1.1
+pandas>=2.3.0
+requests>=2.32.0
+duckdb>=1.1.0
+langgraph>=0.2.0
+langsmith>=0.1.0
+langchain-google-genai>=2.0.0
+langchain-openai>=0.2.0
+python-dotenv>=1.0.0
+streamlit>=1.40.0
+plotly>=5.24.0
+fastapi>=0.115.0
+uvicorn>=0.30.0
+redis>=5.0.0

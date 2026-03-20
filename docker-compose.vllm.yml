@@ -1,0 +1,28 @@
+services:
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: founder-bi-vllm
+    ports:
+      - "8001:8000"
+    environment:
+      HUGGING_FACE_HUB_TOKEN: ${HUGGING_FACE_HUB_TOKEN:-}
+    volumes:
+      - ${USERPROFILE:-~}/.cache/huggingface:/root/.cache/huggingface
+    command:
+      - --model
+      - ${VLLM_MODEL:-Qwen/Qwen2.5-1.5B-Instruct}
+      - --dtype
+      - auto
+      - --gpu-memory-utilization
+      - "0.92"
+      - --max-model-len
+      - "8192"
+      - --api-key
+      - ${VLLM_API_KEY:-EMPTY}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

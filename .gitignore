@@ -1,0 +1,48 @@
+# Environments
+.env
+.env.local
+.env.example
+*.env
+api_token
+api_key
+credentials.json
+secret*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+*.egg-info/
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+artifacts/
+*.sqlite
+*.sqlite3
+*.db
+
+# Node.js
+founder_bi_agent/frontend/node_modules/
+founder_bi_agent/frontend/dist/
+founder_bi_agent/frontend/.npm/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# MacOS
+.DS_Store
