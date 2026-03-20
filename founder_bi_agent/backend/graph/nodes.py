@@ -9,9 +9,10 @@ from concurrent.futures import ThreadPoolExecutor
 
 from founder_bi_agent.backend.config import AgentSettings
 from founder_bi_agent.backend.llm.google_gemini import GeminiSQLPlanner, GeminiFoundationClient
+from founder_bi_agent.backend.llm.qwen_sql import QwenSQLPlanner
 from founder_bi_agent.backend.llm.vllm_openai import VLLMSQLPlanner
 from founder_bi_agent.backend.llm.zhipuai_client import GLMFoundationClient
-from founder_bi_agent.backend.llm.qwen_sql import QwenSQLPlanner
+from founder_bi_agent.backend.llm.groq_client import GroqFoundationClient, GroqSQLPlanner
 from founder_bi_agent.backend.sql.duckdb_engine import DuckDBSession
 from founder_bi_agent.backend.sql.sql_guardrails import validate_read_only_sql
 from founder_bi_agent.backend.sql.sql_planner import build_schema_hint, generate_sql_heuristic
@@ -34,7 +35,10 @@ class FounderBINodes:
     def __init__(self, settings: AgentSettings):
         self.settings = settings
         self.monday_tools = MondayBITools(settings)
-        if settings.llm_provider == "gemini":
+        if settings.llm_provider == "groq":
+            self.foundation_llm = GroqFoundationClient(settings)
+            self.sql_planner = GroqSQLPlanner(settings)
+        elif settings.llm_provider == "gemini":
             self.foundation_llm = GeminiFoundationClient(settings)
             self.sql_planner = GeminiSQLPlanner(settings)
         elif settings.llm_provider in {"vllm", "openai_compat", "openai"}:

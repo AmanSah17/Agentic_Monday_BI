@@ -25,6 +25,8 @@ class AgentSettings:
     zhipuai_api_key: str | None
     zhipuai_base_url: str
     silicon_flow_api_key: str | None
+    groq_api_key: str | None
+    groq_base_url: str
     llm_reasoning_model_variants: list[str]
     llm_sql_model_variants: list[str]
     monday_deals_board_name: str
@@ -48,6 +50,11 @@ class AgentSettings:
         reasoning_variants = [
             x.strip() for x in reasoning_variants_raw.split(",") if x.strip()
         ]
+        
+        provider = os.getenv("LLM_PROVIDER", "").strip().lower()
+        if not provider:
+            provider = "groq" if os.getenv("GROQ_API_KEY") else "gemini"
+
         return cls(
             monday_api_token=os.getenv("MONDAY_API_TOKEN") or os.getenv("MONDAY_COM_API_KEY"),
             monday_mode=os.getenv("MONDAY_MODE", "graphql").strip().lower(),
@@ -63,21 +70,23 @@ class AgentSettings:
                 "MONDAY_MCP_TOOL_GET_BOARD_ITEMS", "get_board_items"
             ),
             langsmith_api_key=os.getenv("LANGSMITH_API_KEY"),
-            langsmith_project=os.getenv("LANGSMITH_PROJECT", "monday-bi-agent"),
-            langsmith_tracing=os.getenv("LANGSMITH_TRACING", "true").lower() == "true",
+            langsmith_project=os.getenv("LANGSMITH_PROJECT", "founder_bi_agent"),
+            langsmith_tracing=os.getenv("LANGSMITH_TRACING", "false").lower() == "true",
             llm_base_url=os.getenv("LLM_BASE_URL", "http://localhost:8000/v1"),
             llm_api_key=os.getenv("LLM_API_KEY"),
             llm_reasoning_model=os.getenv(
-                "LLM_REASONING_MODEL", "gemini-2.5-pro"
+                "LLM_REASONING_MODEL", "llama-3.3-70b-versatile"
             ),
-            llm_sql_model=os.getenv("LLM_SQL_MODEL", "gemini-2.5-flash"),
-            llm_provider=os.getenv("LLM_PROVIDER", "gemini").strip().lower(),
+            llm_sql_model=os.getenv("LLM_SQL_MODEL", "llama-3.3-70b-versatile"),
+            llm_provider=provider,
             google_api_key=os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY"),
             silicon_flow_api_key=os.getenv("SILICON_FLOW_API_KEY"),
             qwen_api_key=os.getenv("QWEN_API_KEY") or os.getenv("SILICON_FLOW_API_KEY"),
             qwen_base_url=os.getenv("QWEN_BASE_URL", "https://api.siliconflow.cn/v1" if os.getenv("SILICON_FLOW_API_KEY") and not os.getenv("QWEN_API_KEY") else "https://dashscope.aliyuncs.com/compatible-mode/v1"),
             zhipuai_api_key=os.getenv("ZHIPUAI_API_KEY") or os.getenv("SILICON_FLOW_API_KEY"),
             zhipuai_base_url=os.getenv("ZHIPUAI_BASE_URL", "https://api.siliconflow.cn/v1" if os.getenv("SILICON_FLOW_API_KEY") and not os.getenv("ZHIPUAI_API_KEY") else "https://open.bigmodel.cn/api/paas/v4/"),
+            groq_api_key=os.getenv("GROQ_API_KEY"),
+            groq_base_url=os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1"),
             llm_reasoning_model_variants=reasoning_variants,
             llm_sql_model_variants=sql_variants,
             monday_deals_board_name=os.getenv("MONDAY_DEALS_BOARD_NAME", "Deal funnel Data"),
