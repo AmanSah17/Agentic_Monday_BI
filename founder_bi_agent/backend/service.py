@@ -85,25 +85,33 @@ class FounderBIService:
     def execute_sql_query(self, sql: str) -> pd.DataFrame:
         """
         Execute a raw SQL query against the live Monday.com data.
-        Used by analytics endpoints for deterministic queries.
-        
-        Args:
-            sql: Valid DuckDB SQL query string
-            
-        Returns:
-            pandas DataFrame with results
-            
-        Raises:
-            Exception: If SQL execution fails
         """
         tools = MondayBITools(self.settings)
-        # Use the underlying client's fetch_relevant_tables to get both tables
-        tables = self.settings.monday_mode  # Check if using MCP or GraphQL
+        tables = self.settings.monday_mode
         client = tools.client
         tables = client.fetch_relevant_tables()
         db = DuckDBSession()
         db.register_tables(tables)
         return db.query(sql)
+
+    def execute_dashboard_queries(self, queries: dict[str, str]) -> dict[str, list[dict[str, Any]]]:
+        """
+        Executes a batch of SQL queries using a single data fetch and DuckDB session.
+        Drastically reduces latency by avoiding redundant API calls.
+        """
+        tools = MondayBITools(self.settings)
+        client = tools.client
+        tables = client.fetch_relevant_tables()
+        db = DuckDBSession()
+        db.register_tables(tables)
+        
+        results = {}
+        from founder_bi_agent.backend.api import _sanitize_for_json
+        for key, sql in queries.items():
+            df = db.query(sql)
+            # Optimize to dict and serialize nulls cleanly
+            results[key] = [_sanitize_for_json(row.to_dict()) for _, row in df.iterrows()]
+        return results
 
 
 def run_founder_query(

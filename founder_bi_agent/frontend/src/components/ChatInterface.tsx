@@ -103,7 +103,9 @@ export const ChatInterface = ({ onMessageSent, messages, isTyping }: ChatInterfa
               className="grid grid-cols-1 md:grid-cols-2 gap-3"
               variants={{
                 container: {
-                  staggerChildren: 0.08,
+                  transition: {
+                    staggerChildren: 0.08,
+                  }
                 }
               }}
               initial="container"

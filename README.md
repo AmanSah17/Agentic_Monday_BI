@@ -1,116 +1,72 @@
-# Agentic Monday BI: AI-Native Revenue & Operations Intelligence
+# 📈 Executive Intelligence BI Agent (V2)
 
-Welcome to **Agentic Monday BI**—a proprietary, enterprise-grade cognitive architecture designed specifically for C-Level Executives (CEOs, CTOs, COOs, and Founders). It bridges the gap between raw, siloed CRM data (in Monday.com) and instant, conversational strategic intelligence.
-
-By utilizing high-speed **Agentic Orchestration** and localized embedded databases, Agentic Monday BI turns a static dashboard into an autonomous data analyst capable of answering complex business questions in under 10 seconds.
+A high-performance Business Intelligence and Data Science dashboard designed for founders and executives. This agent connects directly to Monday.com boards, processes massive datasets using DuckDB, and delivers interactive, actionable insights through a custom-built draggable grid interface.
 
 ---
 
-## 📸 Interface Previews
-Here is how the reactive UI handles real-time executive queries, automatically folding large datasets and drawing insight visualizations via the swarm architecture.
+## 🌟 V2 Interactive Dashboard
+The core of this release is the **V2 Data Science Dashboard**, an interactive workspace that empowers executives to customize their view of the business.
 
-![Interface Execution 1](founder_bi_agent/Project_Images/Run_1.png)
-![Interface Execution 2](founder_bi_agent/Project_Images/Run_2.png)
-![Interface Execution 3](founder_bi_agent/Project_Images/Run_3.png)
-
----
-
-## 🚀 The Core Problem It Solves
-
-Historically, if a CEO needed to know *"What is the exact pipeline value of deals closing this quarter broken down by sector?"*, the workflow looked like this:
-1. Ping a Data Analyst or RevOps Manager.
-2. Wait hours (or days) for a custom SQL query or Tableau dashboard to be built.
-3. Receive a static chart that inevitably requires follow-up questions ("Wait, what if we exclude paused deals?").
-4. Repeat the cycle.
-
-**Agentic Monday BI fundamentally eliminates the "Data Request Queue".**
-
-It allows business leaders to ask hyper-specific, multi-dimensional queries in plain English through a chat interface. The system autonomously reads live Monday.com schemas, writes the SQL defensively, executes it locally, and generates both the chart constraints and a human-readable professional summary instantly.
+### Key Features:
+- **Draggable & Resizable Grid:** Built with a custom implementation of `react-grid-layout` and a native `ResizeObserver` engine for seamless 12-column responsive layout management.
+- **Real-Time Data Sync:** Direct integration with Monday.com via a high-performance Python backend.
+- **Optimized Latency:** Utilizes a single consolidated API endpoint (`/analytics/dashboard-all`) powered by `DuckDB` on the backend to reduce multi-chart load times from minutes to under 14 seconds.
 
 ---
 
-## 💼 Executive Use Cases
+## 🔬 Data Science Insights
+Seven deep-dive analytical modules providing high-resolution visibility into operations and sales.
 
-This engine is optimized for high-impact decision-makers navigating complex datasets (e.g., Sales Funnels and Work Order Operations).
-
-### For the Chief Executive Officer (CEO)
-- **Instant Pipeline Visibility:** *"Show me the total value of all 'In Progress' deals categorized by Service Type."*
-  - *Value:* Zero lag time between a board-level question and absolute data clarity.
-- **Conversion Analytics:** *"What is the ratio of 'Closed Won' to 'Lost'?"*
-  - *Value:* Understand market traction natively without navigating complex CRM logic.
-
-### For the Chief Operating Officer (COO)
-- **Bottleneck Detection:** *"How many work orders have been stuck in the 'Planning' phase for over 30 days?"*
-  - *Value:* Identify operational slow-downs and delivery risks instantly before they impact quarterly revenue recognition.
-- **Capacity Forecasting:** *"Break down our current open work orders by their current status and link them to the allocated project values."*
-  - *Value:* Immediate operational snapshot for resource allocation.
-
-### For the Chief Technology Officer (CTO)
-- **Secure, Autonomous Infrastructure:** 
-  - *Value:* The system pulls live data into an ephemeral, in-memory **DuckDB** instance. Source systems (Monday.com) are completely protected from data-mutation (Read-Only SQL Enforcement), preventing hallucinated deletions.
-- **Multi-Model Extensibility:** 
-  - *Value:* Architecture is aggressively vendor-agnostic. Deployed natively with **Groq (Llama-3.3-70b)** for lightning-fast ~800 tokens/second reasoning, while maintaining silent fallbacks to `Gemini` or `Qwen` if upstream quotas fail (429/404 handling).
-- **Comprehensive Tracing:** 
-  - *Value:* A strictly typed **SQLite** logging engine caches both conversational memory and pipeline traces (prompt schemas, fallback triggers, parsing errors) ensuring 100% audibility of AI actions internally.
+1.  **Revenue Leakage Waterfall:** Tracks value drop-off from `Quoted Amount (GST Incl)` to `Billed Amount` and finally `Actually Collected` per sector.
+2.  **Execution Velocity (Bottleneck Analysis):** Calculates the delta between `Probable Start Dates` and `Actual Billing Months` to identify systematic delays in project execution.
+3.  **Predictive Pipeline Matrix:** Real-time modeling of `Deal Status` aligned against mathematical `Closure Probability` to forecast true revenue.
+4.  **Owner Performance Matrix:** Scatters team members based on their `Active Pipeline Value` and modeled `Win Probability`.
+5.  **Client Concentration (Pareto):** Distribution of pipeline value across clients to identify key account dependencies.
+6.  **Operational Volume vs Billed:** Critical comparison of physical operational activity against actual financial billing quantity.
+7.  **Average Deal Size Analysis:** Segmentation of average deal values by product nature and deal structure.
 
 ---
 
-## 🧠 Multi-Agent LLM Orchestrators
+## 🛠 Tech Stack
 
-Unlike standard chatbots, Agentic Monday BI utilizes a **Swarm Architecture** powered by LangGraph. Different LLM models are seamlessly hot-swapped mid-computation to handle tasks uniquely tailored to their architectural strengths:
+### Frontend
+- **Framework:** React + Vite + TypeScript
+- **Visualization:** Recharts (Sanitized for SVG precision)
+- **Layout:** react-grid-layout + custom ResizeObserver
+- **Animations:** Framer Motion
 
-### 1. **DeepSeek-R1 (The Executive Thinker)**
-- **Purpose:** Deep qualitative reasoning, business insight generation, and chart plotting.
-- **Workflow:** Deployed via `HuggingFace Serverless` and isolated behind a strict 120-second timeout ceiling. DeepSeek receives the raw statistical dataframe after SQL execution and spends significant time generating a profound `<think>` reasoning block to correlate metrics (e.g., tying pipeline deal gaps to specific owners). The result is converted to a pristine Natural Language Summary and `chart_spec` parameters.
-
-### 2. **Qwen-2.5-Coder (The SQL Architect)**
-- **Purpose:** Translating human executive questions into hyper-accurate DuckDB SQL.
-- **Workflow:** Optimized to strictly output `SQL` dialects. It intercepts the natural language query, validates it against the active `information_schema` of the live Monday board, and formulates resilient grouping algorithms without hallucinating unsupported columns.
-
-### 3. **Google Gemini / Groq Llama-3 (The Intent Routers)**
-- **Purpose:** Lightning-fast semantic routing and clarification interception.
-- **Workflow:** These models operate at the very start of the graph. Because they output tokens at sub-second latency, they are responsible for instantly classifying the user's question, deciding if web-search is necessary, and firing clarifying questions if the prompt is dangerously vague.
-
-### 4. **Tavily (The External Context Node)**
-- **Purpose:** Live web intelligence retrieval.
-- **Workflow:** When an LLM router detects an external market query (e.g., *"Is the energy sector growing globally?"*), the agent suspends SQL generation, executes a high-speed Tavily Search payload, and injects real-time market contexts directly alongside your confidential Monday data.
+### Backend
+- **Engine:** FastAPI (Python 3.10)
+- **Database:** DuckDB (OLAP-optimized)
+- **Integration:** Monday.com API (MondayBITools)
 
 ---
 
-## 🛠 Getting Started
+## 🚀 Deployment
 
-### 1. Requirements
-Ensure Python `3.10+` and Node.js are available in your ecosystem.
+### Local Development
+1. **Backend:**
+   ```bash
+   cd founder_bi_agent/backend
+   pip install -r requirements.txt
+   python -m uvicorn api:app --reload --port 8010
+   ```
+2. **Frontend:**
+   ```bash
+   cd founder_bi_agent/frontend
+   npm install
+   npm run dev
+   ```
 
-```bash
-git clone git@github.com:AmanSah17/Agentic_Monday_BI.git
-cd Agentic_Monday_BI
-```
+### Production (Render.com)
+The project is pre-configured for a unified Docker deployment via `render.yaml`.
+- **Dockerized:** The `Dockerfile` handles the multi-stage build (React compile + Python environment).
+- **Environment Variables:**
+  - `LLM_PROVIDER`: huggingface / groq
+  - `MONDAY_COM_API_KEY`: Your Monday.com developer token
+  - `MONDAY_MODE`: `monday` (to use live API)
 
-### 2. Connect Your Enterprise Securely
-Duplicate `.env.example` into a local `.env`. Ensure you provide your authentication tokens for Monday and your preferred LLM gateway (Groq, Gemini, or SiliconFlow). This repo rigorously `.gitignore`s your `.env` to prevent credential leakage.
+---
 
-```env
-MONDAY_COM_API_KEY="your-monday-token"
-GROQ_API_KEY="gsk_your-groq-token"
-LLM_PROVIDER="groq"
-```
-
-### 3. Initialize the Backend Services
-Activate your isolated Python environment, install `requirements.txt`, and deploy the asynchronous FastAPI layer.
-
-```bash
-pip install -r requirements.txt
-python -m uvicorn founder_bi_agent.backend.api:app --host 127.0.0.1 --port 8010
-```
-
-### 4. Deploy the Executive Dashboard
-In a secondary terminal, spin up the React (Vite) frontend.
-
-```bash
-cd founder_bi_agent/frontend
-npm install
-npm run dev
-```
-
-The system is now live at `http://localhost:3000`. Simply engage with the interface to command your data.
+## 📂 Implementation Details
+The dashboard's layout is dynamically managed in `AnalyticsDashboard.tsx`. Each chart represents a "Widget" that can be moved or resized. The backend logic for the new Data Science queries is rigorously defined in `statistical_queries.py` and consolidated into the `execute_dashboard_queries` service method for maximum efficiency.

@@ -1,0 +1,8 @@
+F:\PyTorch_GPU\torch_gpu\lib\site-packages\chromadb\api\collection_configuration.py:327: DeprecationWarning: legacy embedding function config: 'GoogleEmbeddingFunction' object has no attribute 'is_legacy'
+  return json.dumps(create_collection_configuration_to_json(config, metadata))
+INFO:     Started server process [2336]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8010 (Press CTRL+C to quit)
+F:\PyTorch_GPU\torch_gpu\lib\site-packages\chromadb\api\collection_configuration.py:327: DeprecationWarning: legacy embedding function config: 'GoogleEmbeddingFunction' object has no attribute 'is_legacy'
+  return json.dumps(create_collection_configuration_to_json(config, metadata))

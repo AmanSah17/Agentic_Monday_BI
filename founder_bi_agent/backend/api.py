@@ -201,6 +201,57 @@ def query(payload: QueryRequest) -> QueryResponse:
 # PHASE 3: ANALYTICS ENDPOINTS
 # ============================================================================
 
+class DashboardAllResponse(BaseModel):
+    data: dict[str, Any]
+    error: str | None = None
+
+@app.get("/analytics/dashboard-all", response_model=DashboardAllResponse)
+def get_dashboard_all() -> DashboardAllResponse:
+    """
+    Fetches all 11 dashboards in a single shot.
+    This solves the latency issue by executing all SQL queries against a single DuckDB session
+    and a single fetch of the live Monday.com tables.
+    """
+    try:
+        from founder_bi_agent.backend.sql.statistical_queries import get_statistical_query
+        from founder_bi_agent.backend.service import FounderBIService
+        
+        svc = FounderBIService()
+        queries = {
+            "dateRange": get_statistical_query("date_horizon"),
+            "businessMetrics": get_statistical_query("business_metrics"),
+            "dealsPipeline": get_statistical_query("deals_pipeline_stage"),
+            "dealsBySector": get_statistical_query("deals_by_sector"),
+            "woByStatus": get_statistical_query("work_orders_by_status"),
+            "billingFunnel": get_statistical_query("billing_summary"),
+            "monthlyDeals": get_statistical_query("monthly_deals"),
+            "monthlyRevenue": get_statistical_query("monthly_revenue"),
+            "dealStatus": get_statistical_query("deal_status_dist"),
+            "invoiceStatus": get_statistical_query("wo_invoice_status"),
+            "yieldBySector": get_statistical_query("yield_by_sector"),
+            "ownerLeaderboard": get_statistical_query("owner_leaderboard"),
+            "clientConcentration": get_statistical_query("client_concentration"),
+            "volumeFulfillment": get_statistical_query("volume_fulfillment"),
+            "dealSizeDistribution": get_statistical_query("deal_size_distribution"),
+            "revenueLeakage": get_statistical_query("revenue_leakage"),
+            "executionVelocity": get_statistical_query("execution_velocity"),
+            "predictivePipeline": get_statistical_query("predictive_pipeline"),
+            "ownerPerformance": get_statistical_query("owner_performance"),
+        }
+        
+        results = svc.execute_dashboard_queries(queries)
+        
+        # Flatten single-row results
+        if len(results.get("dateRange", [])) == 1:
+            results["dateRange"] = results["dateRange"][0]
+        if len(results.get("businessMetrics", [])) == 1:
+            results["businessMetrics"] = results["businessMetrics"][0]
+            
+        return DashboardAllResponse(data=results)
+    except Exception as exc:
+        logger.exception("get_dashboard_all.error: %s", str(exc))
+        return DashboardAllResponse(data={}, error=str(exc))
+
 class DateRangeResponse(BaseModel):
     min_date: str
     max_date: str
@@ -470,4 +521,74 @@ def get_invoice_status() -> PipelineDataResponse:
         return PipelineDataResponse(data=data)
     except Exception as exc:
         logger.exception("get_invoice_status.error: %s", str(exc))
+        return PipelineDataResponse(data=[], error=str(exc))
+
+@app.get("/analytics/yield-by-sector", response_model=PipelineDataResponse)
+def get_yield_by_sector_endpoint() -> PipelineDataResponse:
+    try:
+        from founder_bi_agent.backend.sql.statistical_queries import get_statistical_query
+        from founder_bi_agent.backend.service import FounderBIService
+        svc = FounderBIService()
+        query = get_statistical_query("yield_by_sector")
+        result_df = svc.execute_sql_query(query)
+        data = [_sanitize_for_json(row.to_dict()) for _, row in result_df.iterrows()]
+        return PipelineDataResponse(data=data)
+    except Exception as exc:
+        logger.exception("get_yield_by_sector.error: %s", str(exc))
+        return PipelineDataResponse(data=[], error=str(exc))
+
+@app.get("/analytics/owner-leaderboard", response_model=PipelineDataResponse)
+def get_owner_leaderboard_endpoint() -> PipelineDataResponse:
+    try:
+        from founder_bi_agent.backend.sql.statistical_queries import get_statistical_query
+        from founder_bi_agent.backend.service import FounderBIService
+        svc = FounderBIService()
+        query = get_statistical_query("owner_leaderboard")
+        result_df = svc.execute_sql_query(query)
+        data = [_sanitize_for_json(row.to_dict()) for _, row in result_df.iterrows()]
+        return PipelineDataResponse(data=data)
+    except Exception as exc:
+        logger.exception("get_owner_leaderboard.error: %s", str(exc))
+        return PipelineDataResponse(data=[], error=str(exc))
+
+@app.get("/analytics/client-concentration", response_model=PipelineDataResponse)
+def get_client_concentration_endpoint() -> PipelineDataResponse:
+    try:
+        from founder_bi_agent.backend.sql.statistical_queries import get_statistical_query
+        from founder_bi_agent.backend.service import FounderBIService
+        svc = FounderBIService()
+        query = get_statistical_query("client_concentration")
+        result_df = svc.execute_sql_query(query)
+        data = [_sanitize_for_json(row.to_dict()) for _, row in result_df.iterrows()]
+        return PipelineDataResponse(data=data)
+    except Exception as exc:
+        logger.exception("get_client_concentration.error: %s", str(exc))
+        return PipelineDataResponse(data=[], error=str(exc))
+
+@app.get("/analytics/volume-fulfillment", response_model=PipelineDataResponse)
+def get_volume_fulfillment_endpoint() -> PipelineDataResponse:
+    try:
+        from founder_bi_agent.backend.sql.statistical_queries import get_statistical_query
+        from founder_bi_agent.backend.service import FounderBIService
+        svc = FounderBIService()
+        query = get_statistical_query("volume_fulfillment")
+        result_df = svc.execute_sql_query(query)
+        data = [_sanitize_for_json(row.to_dict()) for _, row in result_df.iterrows()]
+        return PipelineDataResponse(data=data)
+    except Exception as exc:
+        logger.exception("get_volume_fulfillment.error: %s", str(exc))
+        return PipelineDataResponse(data=[], error=str(exc))
+
+@app.get("/analytics/deal-size-distribution", response_model=PipelineDataResponse)
+def get_deal_size_distribution_endpoint() -> PipelineDataResponse:
+    try:
+        from founder_bi_agent.backend.sql.statistical_queries import get_statistical_query
+        from founder_bi_agent.backend.service import FounderBIService
+        svc = FounderBIService()
+        query = get_statistical_query("deal_size_distribution")
+        result_df = svc.execute_sql_query(query)
+        data = [_sanitize_for_json(row.to_dict()) for _, row in result_df.iterrows()]
+        return PipelineDataResponse(data=data)
+    except Exception as exc:
+        logger.exception("get_deal_size_distribution.error: %s", str(exc))
         return PipelineDataResponse(data=[], error=str(exc))
