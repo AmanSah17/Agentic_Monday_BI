@@ -11,6 +11,9 @@ class BIState(TypedDict, total=False):
     intent: str
     needs_clarification: bool
     clarification_question: str
+    needs_web_search: bool
+    search_query: str
+    reflection_retry: bool
     board_map: dict[str, Any]
     board_schemas: list[dict[str, Any]]
     table_schemas: dict[str, list[dict[str, Any]]]
@@ -24,4 +27,5 @@ class BIState(TypedDict, total=False):
     result_df: pd.DataFrame
     answer: str
     chart_spec: dict[str, Any]
+    web_research_results: list[dict[str, Any]]
     traces: list[dict[str, Any]]

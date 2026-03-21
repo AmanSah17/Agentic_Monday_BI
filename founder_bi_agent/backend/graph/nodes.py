@@ -14,9 +14,12 @@ from founder_bi_agent.backend.llm.vllm_openai import VLLMSQLPlanner
 from founder_bi_agent.backend.llm.zhipuai_client import GLMFoundationClient
 from founder_bi_agent.backend.llm.groq_client import GroqFoundationClient, GroqSQLPlanner
 from founder_bi_agent.backend.sql.duckdb_engine import DuckDBSession
+from founder_bi_agent.backend.sql.duckdb_engine import DuckDBSession
 from founder_bi_agent.backend.sql.sql_guardrails import validate_read_only_sql
 from founder_bi_agent.backend.sql.sql_planner import build_schema_hint, generate_sql_heuristic
 from founder_bi_agent.backend.tools.monday_bi_tools import MondayBITools
+from founder_bi_agent.backend.tools.web_research_tools import WebResearchTools
+from founder_bi_agent.backend.llm.huggingface_client import HuggingFaceClient
 
 
 def _append_trace(state: dict[str, Any], node: str, details: dict[str, Any]) -> list[dict[str, Any]]:
@@ -35,13 +38,15 @@ class FounderBINodes:
     def __init__(self, settings: AgentSettings):
         self.settings = settings
         self.monday_tools = MondayBITools(settings)
+        self.web_tools = WebResearchTools(settings)
+        self.executive_brain = HuggingFaceClient(settings)
         if settings.llm_provider == "groq":
             self.foundation_llm = GroqFoundationClient(settings)
             self.sql_planner = GroqSQLPlanner(settings)
         elif settings.llm_provider == "gemini":
             self.foundation_llm = GeminiFoundationClient(settings)
             self.sql_planner = GeminiSQLPlanner(settings)
-        elif settings.llm_provider in {"vllm", "openai_compat", "openai"}:
+        elif settings.llm_provider in {"vllm", "openai_compat", "openai", "huggingface"}:
             self.foundation_llm = GLMFoundationClient(settings)
             self.sql_planner = VLLMSQLPlanner(settings)
         elif settings.llm_provider == "qwen":
@@ -66,14 +71,15 @@ class FounderBINodes:
     def clarifier(self, state: dict[str, Any]) -> dict[str, Any]:
         question = state["question"]
         intent = state.get("intent", "general_bi")
-        needs_clarif, clarif_q = self.foundation_llm.clarify(question, intent)
+        conversation_history = state.get("conversation_history", [])
+        needs_clarif, clarif_q = self.foundation_llm.clarify(question, intent, conversation_history)
         return {
             "needs_clarification": needs_clarif,
             "clarification_question": clarif_q,
             "traces": _append_trace(
                 state,
                 "clarifier",
-                {"needs_clarification": needs_clarif, "q": clarif_q},
+                {"needs_clarification": needs_clarif, "q": clarif_q, "context_turns": len(conversation_history)},
             ),
         }
 
@@ -310,6 +316,12 @@ class FounderBINodes:
         result_df: pd.DataFrame = state.get("result_df", pd.DataFrame())
         quality_report = state.get("quality_report", {})
         question = str(state.get("question", "")).lower()
+        
+        web_results = state.get("web_research_results", [])
+        if web_results:
+            web_context = "\n\n[CRITICAL WEB Context to synthesize with data]:\n" + "\n".join(f"- {r.get('title', '')}: {r.get('content', '')}" for r in web_results)
+            question += web_context
+            
         board_schemas = state.get("board_schemas", [])
         table_schemas = state.get("table_schemas", {})
         sql_execution_error = state.get("sql_execution_error")
@@ -368,3 +380,48 @@ class FounderBINodes:
             return question
         history_block = "\n".join(f"- {turn}" for turn in recent_user_turns)
         return f"Conversation context:\n{history_block}\n\nCurrent question: {question}"
+
+    def deepseek_executive_planner(self, state: dict[str, Any]) -> dict[str, Any]:
+        question = state["question"]
+        history = state.get("conversation_history", [])
+        needs_search, search_query, reasoning = self.executive_brain.refine_plan(question, history)
+        return {
+            "needs_web_search": needs_search,
+            "search_query": search_query,
+            "traces": _append_trace(
+                state,
+                "deepseek_executive_planner",
+                {"needs_search": needs_search, "search_query": search_query, "reasoning": reasoning[:200] + "..."},
+            ),
+        }
+
+    def web_researcher(self, state: dict[str, Any]) -> dict[str, Any]:
+        query = state.get("search_query", "")
+        if not query:
+            return {"web_research_results": []}
+        results = self.web_tools.search_market_trends(query)
+        return {
+            "web_research_results": results,
+            "traces": _append_trace(
+                state,
+                "web_researcher",
+                {"query": query, "results_found": len(results)},
+            ),
+        }
+
+    def reflection_judge(self, state: dict[str, Any]) -> dict[str, Any]:
+        answer = state.get("answer", "")
+        # A simple reflection: verify answer is sensible
+        needs_retry = False
+        if len(answer) < 10 or "error" in answer.lower() or "context skipped" in answer.lower():
+            needs_retry = True
+            
+        return {
+            "reflection_retry": needs_retry,
+            "traces": _append_trace(
+                state,
+                "reflection_judge",
+                {"needs_retry": needs_retry, "original_answer_len": len(answer)},
+            ),
+        }
+

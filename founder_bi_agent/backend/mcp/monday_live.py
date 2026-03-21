@@ -73,6 +73,7 @@ class MondayLiveClient:
             headers={
                 "Authorization": self.settings.monday_api_token,
                 "Content-Type": "application/json",
+                "API-Version": "2024-01",
             },
             timeout=60,
         )

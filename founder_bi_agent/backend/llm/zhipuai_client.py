@@ -25,16 +25,24 @@ class GLMFoundationClient:
             ) from exc
 
         model_name = getattr(self.settings, "llm_reasoning_model", "glm-4.5-air") or "glm-4.5-air"
+        api_key = self.settings.zhipuai_api_key or "EMPTY"
+        base_url = self.settings.zhipuai_base_url
+        
         if "siliconflow" in str(self.settings.zhipuai_base_url).lower():
             model_name = "THUDM/glm-4-9b-chat"
+            
+        if self.settings.llm_provider == "huggingface":
+            model_name = "deepseek-ai/DeepSeek-R1"
+            api_key = self.settings.huggingface_api_key
+            base_url = "https://router.huggingface.co/v1/"
 
         return ChatOpenAI(
             model=model_name,
-            api_key=self.settings.zhipuai_api_key or "EMPTY",
-            base_url=self.settings.zhipuai_base_url,
+            api_key=api_key,
+            base_url=base_url,
             temperature=0.1,
             max_retries=2,
-            timeout=30,
+            timeout=120,
         )
 
     def route_intent(self, question: str) -> str:
@@ -55,16 +63,28 @@ class GLMFoundationClient:
             pass
         return "general_bi"
 
-    def clarify(self, question: str, intent: str) -> tuple[bool, str]:
+    def clarify(self, question: str, intent: str, conversation_history: list[dict[str, str]] | None = None) -> tuple[bool, str]:
+        # Build conversation context
+        history_context = ""
+        if conversation_history:
+            history_lines = []
+            for msg in conversation_history:
+                role = msg.get("role", "user").upper()
+                content = msg.get("content", "").strip()
+                if content and len(content) < 500:
+                    history_lines.append(f"{role}: {content}")
+            if history_lines:
+                history_context = "\n".join(history_lines[-6:])
+        
         prompt = (
-            "You are a helpful BI assistant determining if a user's question needs clarification regarding timeframes.\n"
-            "If the question talks about performance, pipeline, or trends but lacks a specific time period (e.g., this quarter, last month, Q1), "
-            "it needs clarification. If a time period is implied or explicitly stated, it does NOT need clarification.\n\n"
-            f"Question: {question}\n\n"
+            "You are a helpful BI assistant determining if a user's question needs clarification.\n"
+            "CRITICAL RULE: Check if information (sector, timeframe, or other details) has ALREADY been provided in prior conversation turns.\n"
+            "If yes, DON'T ask again. Only ask for NEW or missing information.\n\n"
+            f"Prior Conversation:\n{history_context or '(No prior context)'}\n\n"
+            f"Current Question: {question}\n\n"
             "Return a JSON object with two fields:\n"
             "- 'needs_clarification' (boolean)\n"
-            "- 'clarification_question' (string, empty if none needed, "
-            "otherwise ask which timeframe they prefer, such as 'this quarter', 'last month', etc.)\n\n"
+            "- 'clarification_question' (string, empty if none needed or info already provided, otherwise ask ONE specific new question)\n\n"
             "Respond ONLY with JSON."
         )
         try:
@@ -92,19 +112,10 @@ class GLMFoundationClient:
         table_schemas: dict[str, Any],
         sql_execution_error: str | None,
     ) -> str:
-        if "column names" in question.lower() or "dataset" in question.lower():
-            return (
-                "This dataset is a business operations + revenue intelligence model built from two monday boards. "
-                "The Deals board captures pipeline creation, stage movement, close-date expectation, sector/service and masked deal value. "
-                "The Work Orders board captures execution lifecycle, billing/collection progression, receivables and delivery milestones. "
-                "Together they support founder-level questions across pipeline health, conversion and cash-flow realization. "
-                f"Current inferred schema size: deals={len(table_schemas.get('deals', []))} columns, "
-                f"work_orders={len(table_schemas.get('work_orders', []))} columns."
-            )
-            
+
         data_preview = ""
         if result_df is not None and not result_df.empty:
-            data_preview = result_df.head(5).to_markdown()
+            data_preview = result_df.head(500).to_markdown()
         else:
             data_preview = "No rows returned."
 

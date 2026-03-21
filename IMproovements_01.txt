@@ -1,0 +1,41 @@
+Query : What are the total Naruto entries there in the dataframe and which column it belons to !
+
+Result : Data retrieved successfully: 346 rows × 30 columns. Dataset contains 2 numeric fields and 20 categorical fields. Ready for analysis.
+Generated SQL
+
+SELECT * FROM deals LIMIT 50000
+Result Rows (346)
+
+item_id	item_name	created_at	updated_at	group_id	group_title
+2634233649	Naruto	2026-03-20T21:06:41+05:30	2026-03-20T21:06:41+05:30	topics	Group Title
+2634203689	Sasuke	2026-03-20T21:06:41+05:30	2026-03-20T21:06:41+05:30	topics	Group Title
+2634146778	Sasuke	2026-03-20T21:06:41+05:30	2026-03-20T21:06:41+05:30	topics	Group Title
+2634203749	Sakura	2026-03-20T21:06:42+05:30	2026-03-20T21:06:41+05:30	topics	Group Title
+2634203711	Sakura	2026-03-20T21:06:42+05:30	2026-03-20T21:06:42+05:30	topics	Group Title
+2634203738	Sakura	2026-03-20T21:06:42+05:30	2026-03-20T21:06:42+05:30	topics	Group Title
+2634203732	Sakura	2026-03-20T21:06:42+05:30	2026-03-20T21:06:42+05:30	topics	Group Title
+2634233632	Sakura	2026-03-20T21:06:42+05:30	2026-03-20T21:06:42+05:30	topics	Group Title
+
+Suggestion : Not returining the individal specific count , nOt even how many Naruto / Sakura named shirts are sold , hoow much revenue it generated ,  , at what status the orders are .
+
+
+Question :what are the columns in the Deals tables connected to mondaycom boards .
+
+Results  :Result Rows (110)
+
+table_name	column_name
+deals	item_id
+deals	item_name
+deals	created_at
+deals	updated_at
+deals	group_id
+deals	group_title
+deals	subitems
+deals	subitems__raw
+
+Suggestion :but the original dataframe on monday boarda has : Deal Name Owner code Client Code Deal Status Close Date (A) Closure Probability Masked Deal value Tentative Close Date Deal Stage Product deal Sector/service Created Date these columns .
+
+Not able to recgnize and store the diffeent column names from the APIS , the column names should be appropriate and as per data to understand the context of data.
+
+
+Note :  we need to get differetn user specific detailds , and often merge --query and find both the tables to gather informations belonging to various rows and column information to give more in deppth analysis ..

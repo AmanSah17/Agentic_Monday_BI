@@ -44,13 +44,9 @@ def generate_sql_heuristic(question: str, available_tables: Iterable[str]) -> st
           MIN(event_date) AS min_date,
           MAX(event_date) AS max_date
         FROM (
-          SELECT created_at::DATE AS event_date FROM deals WHERE created_at IS NOT NULL
+          SELECT DATE_TRUNC('day', TRY_CAST(created_at AS TIMESTAMP)) AS event_date FROM deals WHERE created_at IS NOT NULL
           UNION ALL
-          SELECT updated_at::DATE AS event_date FROM deals WHERE updated_at IS NOT NULL
-          UNION ALL
-          SELECT created_at::DATE AS event_date FROM work_orders WHERE created_at IS NOT NULL
-          UNION ALL
-          SELECT updated_at::DATE AS event_date FROM work_orders WHERE updated_at IS NOT NULL
+          SELECT DATE_TRUNC('day', TRY_CAST(created_at AS TIMESTAMP)) AS event_date FROM work_orders WHERE created_at IS NOT NULL
         ) AS all_dates
         """
 
@@ -122,8 +118,45 @@ def generate_sql_heuristic(question: str, available_tables: Iterable[str]) -> st
 
 
 def build_schema_hint(tables: dict[str, pd.DataFrame]) -> str:
+    """
+    Build comprehensive schema hint with column types, categorical values, and date ranges.
+    This context is critical for the LLM to generate correct SQL.
+    """
     lines: list[str] = []
+    
     for table_name, df in tables.items():
-        cols = ", ".join(f"{c}:{str(df[c].dtype)}" for c in df.columns[:40])
-        lines.append(f"- {table_name}({cols})")
+        lines.append(f"\nTABLE: {table_name} ({len(df)} rows)")
+        lines.append("=" * 60)
+        
+        for col in df.columns[:50]:  # Limit to first 50 columns
+            col_type = str(df[col].dtype)
+            non_null_count = df[col].notna().sum()
+            null_count = df[col].isna().sum()
+            
+            # Build column info line
+            col_info = f"  • {col} ({col_type})"
+            col_info += f" | Non-null: {non_null_count}, Null: {null_count}"
+            lines.append(col_info)
+            
+            # For categorical/object columns with few distinct values, show valid values
+            if col_type == "object" and non_null_count > 0:
+                distinct = df[col].dropna().unique()
+                if len(distinct) <= 10:  # Only show if <= 10 distinct values
+                    distinct_str = ", ".join(str(v)[:30] for v in distinct)
+                    lines.append(f"    Valid values: [{distinct_str}]")
+            
+            # For date columns, show the date range
+            elif 'datetime' in col_type and non_null_count > 0:
+                min_date = df[col].min()
+                max_date = df[col].max()
+                lines.append(f"    Date range: {min_date} to {max_date}")
+            
+            # For numeric columns, show range
+            elif 'int' in col_type or 'float' in col_type:
+                non_null_vals = df[col].dropna()
+                if len(non_null_vals) > 0:
+                    min_val = non_null_vals.min()
+                    max_val = non_null_vals.max()
+                    lines.append(f"    Range: {min_val} to {max_val}")
+    
     return "\n".join(lines)

@@ -18,6 +18,7 @@ class AgentSettings:
     llm_api_key: str | None
     llm_reasoning_model: str
     llm_sql_model: str
+    llm_insight_model: str
     llm_provider: str
     google_api_key: str | None
     qwen_api_key: str | None
@@ -25,10 +26,13 @@ class AgentSettings:
     zhipuai_api_key: str | None
     zhipuai_base_url: str
     silicon_flow_api_key: str | None
+    huggingface_api_key: str | None
+    tavily_api_key: str | None
     groq_api_key: str | None
     groq_base_url: str
     llm_reasoning_model_variants: list[str]
     llm_sql_model_variants: list[str]
+    llm_insight_model_variants: list[str]
     monday_deals_board_name: str
     monday_work_orders_board_name: str
     monday_deals_board_id: int | None
@@ -50,10 +54,15 @@ class AgentSettings:
         reasoning_variants = [
             x.strip() for x in reasoning_variants_raw.split(",") if x.strip()
         ]
+        insight_variants_raw = os.getenv(
+            "LLM_INSIGHT_MODEL_VARIANTS",
+            "llama-3.1-70b-versatile,llama-3.1-8b-instant",
+        )
+        insight_variants = [x.strip() for x in insight_variants_raw.split(",") if x.strip()]
         
         provider = os.getenv("LLM_PROVIDER", "").strip().lower()
         if not provider:
-            provider = "groq" if os.getenv("GROQ_API_KEY") else "gemini"
+            provider = "huggingface" if os.getenv("HUGGINGFACE_API_KEY") else ("groq" if os.getenv("GROQ_API_KEY") else "gemini")
 
         return cls(
             monday_api_token=os.getenv("MONDAY_API_TOKEN") or os.getenv("MONDAY_COM_API_KEY"),
@@ -77,7 +86,8 @@ class AgentSettings:
             llm_reasoning_model=os.getenv(
                 "LLM_REASONING_MODEL", "llama-3.3-70b-versatile"
             ),
-            llm_sql_model=os.getenv("LLM_SQL_MODEL", "llama-3.3-70b-versatile"),
+            llm_sql_model=os.getenv("LLM_SQL_MODEL", "qwen-2.5-coder-32b"),
+            llm_insight_model=os.getenv("LLM_INSIGHT_MODEL", "llama-3.1-70b-versatile"),
             llm_provider=provider,
             google_api_key=os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY"),
             silicon_flow_api_key=os.getenv("SILICON_FLOW_API_KEY"),
@@ -85,10 +95,13 @@ class AgentSettings:
             qwen_base_url=os.getenv("QWEN_BASE_URL", "https://api.siliconflow.cn/v1" if os.getenv("SILICON_FLOW_API_KEY") and not os.getenv("QWEN_API_KEY") else "https://dashscope.aliyuncs.com/compatible-mode/v1"),
             zhipuai_api_key=os.getenv("ZHIPUAI_API_KEY") or os.getenv("SILICON_FLOW_API_KEY"),
             zhipuai_base_url=os.getenv("ZHIPUAI_BASE_URL", "https://api.siliconflow.cn/v1" if os.getenv("SILICON_FLOW_API_KEY") and not os.getenv("ZHIPUAI_API_KEY") else "https://open.bigmodel.cn/api/paas/v4/"),
+            huggingface_api_key=os.getenv("HUGGINGFACE_API_KEY"),
+            tavily_api_key=os.getenv("TAVILY_API_KEY"),
             groq_api_key=os.getenv("GROQ_API_KEY"),
             groq_base_url=os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1"),
             llm_reasoning_model_variants=reasoning_variants,
             llm_sql_model_variants=sql_variants,
+            llm_insight_model_variants=insight_variants,
             monday_deals_board_name=os.getenv("MONDAY_DEALS_BOARD_NAME", "Deal funnel Data"),
             monday_work_orders_board_name=os.getenv(
                 "MONDAY_WORK_ORDERS_BOARD_NAME", "Work_Order_Tracker Data"

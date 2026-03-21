@@ -138,24 +138,35 @@ DEALS_METADATA = TableMetadata(
             null_count=1,
         ),
     ],
-    all_columns=[
-        "item_id",
-        "item_name",
-        "created_at",
-        "updated_at",
-        "group_id",
-        "group_title",
-        "owner_code",
-        "client_code",
-        "deal_status",
-        "close_date_a",
-        "closure_probability",
-        "masked_deal_value",
-        "tentative_close_date",
-        "deal_stage",
-        "product_deal",
-        "sectorservice",
-        "created_date",
+    all_columns=[  # 28 total columns
+        "item_id",                      # 1. Unique deal identifier
+        "item_name",                    # 2. Deal name/title
+        "created_at",                   # 3. System creation timestamp
+        "updated_at",                   # 4. Last system update
+        "group_id",                     # 5. Category ID
+        "group_title",                  # 6. Category name
+        "owner_code",                   # 7. Sales owner identifier
+        "owner_code__raw",              # 8. Raw Monday.com owner data (JSON)
+        "client_code",                  # 9. Client/Company identifier
+        "client_code__raw",             # 10. Raw Monday.com client data (JSON)
+        "deal_status",                  # 11. Status: Open/On Hold/Won/Lost
+        "deal_status__raw",             # 12. Raw Monday.com status data (JSON)
+        "close_date_a",                 # 13. Deal closure date
+        "close_date_a__raw",            # 14. Raw Monday.com close date (JSON)
+        "closure_probability",          # 15. Win probability (High/Medium/Low)
+        "closure_probability__raw",     # 16. Raw Monday.com probability (JSON)
+        "masked_deal_value",            # 17. Deal value in currency (₹)
+        "masked_deal_value__raw",       # 18. Raw Monday.com value (JSON)
+        "tentative_close_date",         # 19. Projected closure date
+        "tentative_close_date__raw",    # 20. Raw Monday.com tentative date (JSON)
+        "deal_stage",                   # 21. Pipeline stage (A-M)
+        "deal_stage__raw",              # 22. Raw Monday.com stage (JSON)
+        "product_deal",                 # 23. Product/service type
+        "product_deal__raw",            # 24. Raw Monday.com product (JSON)
+        "sectorservice",                # 25. Sector (Mining/Powerline/Renewables/Tender)
+        "sectorservice__raw",           # 26. Raw Monday.com sector (JSON)
+        "created_date",                 # 27. Deal creation date
+        "created_date__raw",            # 28. Raw Monday.com creation date (JSON)
     ],
 )
 

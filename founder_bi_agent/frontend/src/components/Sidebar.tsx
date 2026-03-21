@@ -10,15 +10,28 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
-const navItems = [
-  { icon: MessageSquare, label: 'Chat', active: true },
-  { icon: LayoutDashboard, label: 'Dashboard' },
-  { icon: Network, label: 'Data Map' },
-  { icon: Library, label: 'Library' },
-  { icon: Settings, label: 'Admin' },
+export type ViewMode = 'chat' | 'dashboard' | 'data-map' | 'library' | 'admin';
+
+interface NavItem {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  view: ViewMode;
+}
+
+const navItems: NavItem[] = [
+  { icon: MessageSquare, label: 'Chat', view: 'chat' },
+  { icon: LayoutDashboard, label: 'Dashboard', view: 'dashboard' },
+  { icon: Network, label: 'Data Map', view: 'data-map' },
+  { icon: Library, label: 'Library', view: 'library' },
+  { icon: Settings, label: 'Admin', view: 'admin' },
 ];
 
-export const Sidebar = () => {
+interface SidebarProps {
+  currentView: ViewMode;
+  onViewChange: (view: ViewMode) => void;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange }) => {
   return (
     <aside className="fixed left-0 top-0 h-full w-64 z-40 bg-surface-container-low border-r border-outline-variant/10 flex flex-col">
       <div className="px-6 py-8">
@@ -28,19 +41,22 @@ export const Sidebar = () => {
 
       <nav className="flex-1 space-y-1">
         {navItems.map((item) => (
-          <a
-            key={item.label}
-            href="#"
+          <button
+            key={item.view}
+            onClick={() => onViewChange(item.view)}
             className={cn(
-              "flex items-center gap-3 px-6 py-4 transition-all duration-300 group",
-              item.active 
+              "w-full flex items-center gap-3 px-6 py-4 transition-all duration-300 group text-left",
+              currentView === item.view
                 ? "border-l-2 border-primary-container text-white bg-gradient-to-r from-primary-container/10 to-transparent" 
                 : "text-outline hover:text-white hover:bg-white/5"
             )}
           >
-            <item.icon className={cn("w-5 h-5", item.active ? "text-primary-container" : "text-outline group-hover:text-white")} />
+            <item.icon className={cn("w-5 h-5", currentView === item.view ? "text-primary-container" : "text-outline group-hover:text-white")} />
             <span className="font-medium">{item.label}</span>
-          </a>
+            {currentView === item.view && (
+              <ChevronRight className="ml-auto w-4 h-4 text-primary-container" />
+            )}
+          </button>
         ))}
       </nav>
 

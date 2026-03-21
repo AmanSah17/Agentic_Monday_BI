@@ -46,16 +46,25 @@ This engine is optimized for high-impact decision-makers navigating complex data
 
 ---
 
-## 🧠 How the Agentic Orchestration Works
+## 🧠 Multi-Agent LLM Orchestrators
 
-Unlike simple "RAG" (Retrieval-Augmented Generation) which just searches text documents, this is a **Node-based Cognitive Graph** (powered by LangGraph):
+Unlike standard chatbots, Agentic Monday BI utilizes a **Swarm Architecture** powered by LangGraph. Different LLM models are seamlessly hot-swapped mid-computation to handle tasks uniquely tailored to their architectural strengths:
 
-1. **Intent Router (LLM):** The system first evaluates the semantic intent of the executive's question (`pipeline_health` vs `general_bi`) to heavily scope the context window.
-2. **Clarifier Agent (LLM):** If a question is dangerously vague (e.g., *"How did we do?"*), the Clarifier intercepts execution and asks the executive to specify dimensions (like timeframes) to prevent hallucinated assumptions.
-3. **Data Fetcher (API):** Concurrently loads live schema maps directly from Monday.com via multi-threading.
-4. **NLP-to-SQL Planner (LLM):** A dedicated coding model (like `Qwen-2.5-Coder` or `Llama-3`) dynamically writes hyper-accurate DuckDB SQL against the exact column structures pulled seconds earlier.
-5. **Execution Engine (DuckDB):** The SQL runs cleanly in RAM. Pydantic-validated guardrails automatically reject any `DROP`, `DELETE`, or `UPDATE` queries.
-6. **Insight Writer (LLM):** The raw statistical outputs are passed back to the Foundation model which generates a concise, professional executive summary, while the React UI dynamically auto-generates visual plots.
+### 1. **DeepSeek-R1 (The Executive Thinker)**
+- **Purpose:** Deep qualitative reasoning, business insight generation, and chart plotting.
+- **Workflow:** Deployed via `HuggingFace Serverless` and isolated behind a strict 120-second timeout ceiling. DeepSeek receives the raw statistical dataframe after SQL execution and spends significant time generating a profound `<think>` reasoning block to correlate metrics (e.g., tying pipeline deal gaps to specific owners). The result is converted to a pristine Natural Language Summary and `chart_spec` parameters.
+
+### 2. **Qwen-2.5-Coder (The SQL Architect)**
+- **Purpose:** Translating human executive questions into hyper-accurate DuckDB SQL.
+- **Workflow:** Optimized to strictly output `SQL` dialects. It intercepts the natural language query, validates it against the active `information_schema` of the live Monday board, and formulates resilient grouping algorithms without hallucinating unsupported columns.
+
+### 3. **Google Gemini / Groq Llama-3 (The Intent Routers)**
+- **Purpose:** Lightning-fast semantic routing and clarification interception.
+- **Workflow:** These models operate at the very start of the graph. Because they output tokens at sub-second latency, they are responsible for instantly classifying the user's question, deciding if web-search is necessary, and firing clarifying questions if the prompt is dangerously vague.
+
+### 4. **Tavily (The External Context Node)**
+- **Purpose:** Live web intelligence retrieval.
+- **Workflow:** When an LLM router detects an external market query (e.g., *"Is the energy sector growing globally?"*), the agent suspends SQL generation, executes a high-speed Tavily Search payload, and injects real-time market contexts directly alongside your confidential Monday data.
 
 ---
 

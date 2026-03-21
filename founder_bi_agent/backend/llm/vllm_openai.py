@@ -27,14 +27,23 @@ class VLLMSQLPlanner:
             ) from exc
 
         base_url = self.settings.llm_base_url.strip().rstrip("/")
+        api_key = self.settings.llm_api_key or "EMPTY"
+        target_model = model
+
+        if self.settings.llm_provider == "huggingface":
+            base_url = "https://router.huggingface.co/v1"
+            api_key = self.settings.huggingface_api_key
+            target_model = "deepseek-ai/DeepSeek-R1" # Excellent for SQL
+
         if not base_url.endswith("/v1"):
             base_url = f"{base_url}/v1"
 
         return ChatOpenAI(
-            model=model,
-            api_key=self.settings.llm_api_key or "EMPTY",
+            model=target_model,
+            api_key=api_key,
             base_url=base_url,
             temperature=0,
+            timeout=120,
         )
 
     def _get_client(self, model: str) -> Any:
@@ -64,7 +73,7 @@ class VLLMSQLPlanner:
         return raw
 
     def generate_sql(self, question: str, schema_hint: str, fallback_sql: str) -> str:
-        if self.settings.llm_provider not in {"vllm", "openai_compat", "openai"}:
+        if self.settings.llm_provider not in {"vllm", "openai_compat", "openai", "huggingface"}:
             self.last_generation_meta = {
                 "provider": self.settings.llm_provider,
                 "mode": "fallback_non_vllm_provider",

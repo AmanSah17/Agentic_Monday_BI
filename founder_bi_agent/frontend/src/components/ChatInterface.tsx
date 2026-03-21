@@ -1,15 +1,49 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Paperclip, Zap, Cpu, BarChart3 } from 'lucide-react';
+import { Paperclip, Zap, Cpu, BarChart3, TrendingUp, Users, Clock, DollarSign, CheckCircle } from 'lucide-react';
 import { Message } from '../services/ai';
 import { cn } from '../lib/utils';
 import confetti from 'canvas-confetti';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 interface ChatInterfaceProps {
   onMessageSent: (prompt: string) => void;
   messages: Message[];
   isTyping: boolean;
 }
+
+const SUGGESTED_QUESTIONS = [
+  {
+    text: "Deals by owner: who has the most value in pipeline?",
+    icon: Users,
+    category: "Sales Pipeline"
+  },
+  {
+    text: "What's the status breakdown of work orders by execution?",
+    icon: CheckCircle,
+    category: "Work Orders"
+  },
+  {
+    text: "Which sectors are generating the most revenue?",
+    icon: TrendingUp,
+    category: "Revenue Analysis"
+  },
+  {
+    text: "What's the deal-to-work-order conversion rate by stage?",
+    icon: BarChart3,
+    category: "Conversion"
+  },
+  {
+    text: "Which deals are closest to closing in the next 30 days?",
+    icon: Clock,
+    category: "Pipeline Forecast"
+  },
+  {
+    text: "What's the billing and collection status of all work orders?",
+    icon: DollarSign,
+    category: "Financials"
+  }
+];
 
 export const ChatInterface = ({ onMessageSent, messages, isTyping }: ChatInterfaceProps) => {
   const [input, setInput] = useState('');
@@ -20,6 +54,17 @@ export const ChatInterface = ({ onMessageSent, messages, isTyping }: ChatInterfa
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isTyping]);
+
+  const handleSuggestedQuestion = (question: string) => {
+    setInput(question);
+    // Trigger submit on next render
+    setTimeout(() => {
+      const form = document.querySelector('form');
+      if (form) {
+        form.dispatchEvent(new Event('submit', { bubbles: true }));
+      }
+    }, 0);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,31 +85,66 @@ export const ChatInterface = ({ onMessageSent, messages, isTyping }: ChatInterfa
 
   return (
     <section className="flex-1 flex flex-col gap-6 max-w-4xl mx-auto w-full">
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-surface-container-low rounded-xl p-6 flex items-center justify-between border border-outline-variant/10"
-      >
-        <div className="flex items-center gap-4">
-          <div className="bg-primary-container/20 p-3 rounded-lg">
-            <BarChart3 className="w-6 h-6 text-primary-container" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-white tracking-tight">Business Intelligence Hub</h2>
-            <p className="text-xs text-outline">Live monday tool-calling + traceable reasoning.</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 bg-surface-container-lowest p-1 rounded-lg">
-          <button className="px-4 py-1.5 text-xs font-bold text-outline hover:text-white transition-all">
-            Fast
-          </button>
-          <button className="px-4 py-1.5 text-xs font-bold text-primary-container bg-surface-container-high rounded-md">
-            Deep Reasoning
-          </button>
-        </div>
-      </motion.div>
+
 
       <div ref={scrollRef} className="flex-1 flex flex-col gap-6 overflow-y-auto no-scrollbar pb-32 px-2">
+        {messages.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, staggerChildren: 0.1 }}
+            className="flex flex-col gap-4 mt-12"
+          >
+            <div className="text-center mb-4">
+              <h3 className="text-lg font-bold text-white mb-2">Suggested Questions</h3>
+              <p className="text-xs text-outline">Click any question or type your own to get started</p>
+            </div>
+            <motion.div
+              className="grid grid-cols-1 md:grid-cols-2 gap-3"
+              variants={{
+                container: {
+                  staggerChildren: 0.08,
+                }
+              }}
+              initial="container"
+              animate="container"
+            >
+              {SUGGESTED_QUESTIONS.map((q, i) => {
+                const IconComponent = q.icon;
+                return (
+                  <motion.button
+                    key={i}
+                    onClick={() => handleSuggestedQuestion(q.text)}
+                    variants={{
+                      container: {
+                        opacity: 0,
+                        y: 10,
+                      }
+                    }}
+                    animate={{
+                      opacity: 1,
+                      y: 0,
+                    }}
+                    transition={{ delay: i * 0.08 }}
+                    className="p-4 rounded-xl bg-surface-container-low border border-outline-variant/20 text-left hover:border-primary-container/50 hover:bg-surface-container transition-all duration-200 group cursor-pointer"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-primary-container/20 text-primary-container flex items-center justify-center shrink-0 group-hover:bg-primary-container/40 transition-colors">
+                        <IconComponent className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-outline mb-1 font-medium">{q.category}</p>
+                        <p className="text-sm text-on-surface group-hover:text-white transition-colors line-clamp-2">
+                          {q.text}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.button>
+                );
+              })}
+            </motion.div>
+          </motion.div>
+        )}
         <AnimatePresence initial={false}>
           {messages.map((msg, i) => (
             <motion.div
@@ -89,14 +169,6 @@ export const ChatInterface = ({ onMessageSent, messages, isTyping }: ChatInterfa
               >
                 {msg.content}
 
-                {msg.role === 'model' && msg.payload?.sql_query && (
-                  <div className="mt-4 rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-3">
-                    <p className="text-[10px] uppercase tracking-widest text-outline mb-2">Generated SQL</p>
-                    <pre className="text-[11px] whitespace-pre-wrap break-words font-mono text-primary-container">
-                      {msg.payload.sql_query}
-                    </pre>
-                  </div>
-                )}
 
                 {msg.role === 'model' && msg.payload?.result_records?.length ? (
                   <div className="mt-4 rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-3">
@@ -104,6 +176,21 @@ export const ChatInterface = ({ onMessageSent, messages, isTyping }: ChatInterfa
                       Result Rows ({msg.payload.result_records.length})
                     </p>
                     <ResultPreview records={msg.payload.result_records} />
+                  </div>
+                ) : null}
+
+                {msg.role === 'model' && msg.payload?.chart_spec?.kind === 'bar' && msg.payload?.result_records?.length ? (
+                  <div className="mt-4 h-64 w-full rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-4">
+                    <p className="text-xs font-bold text-outline mb-4">{String(msg.payload.chart_spec.title)}</p>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={msg.payload.result_records as any[]}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                        <XAxis dataKey={msg.payload.chart_spec.x as string} stroke="#888" tick={{fontSize: 10}} />
+                        <YAxis stroke="#888" tick={{fontSize: 10}} width={80} />
+                        <Tooltip contentStyle={{backgroundColor: '#111', borderColor: '#333'}} itemStyle={{color: '#fff'}} />
+                        <Bar dataKey={msg.payload.chart_spec.y as string} fill="#6161ff" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
                   </div>
                 ) : null}
 
@@ -177,39 +264,64 @@ const ResultPreview = ({ records }: ResultPreviewProps) => {
   const limited = records.slice(0, 8);
   const columns = Array.from(
     limited.reduce((set, row) => {
-      Object.keys(row).forEach((k) => set.add(k));
+      Object.keys(row).forEach((k) => {
+        // filter out raw subitems or internal monday IDs to show real business data
+        if (!k.includes('__raw') && !['subitems', 'item_id', 'group_id', 'created_at', 'updated_at'].includes(k)) {
+          set.add(k);
+        }
+      });
       return set;
     }, new Set<string>())
-  ).slice(0, 6);
+  ).slice(0, 15);
 
   if (!columns.length) {
     return <p className="text-xs text-outline">No tabular rows to display.</p>;
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full text-[11px]">
-        <thead>
-          <tr className="text-left text-outline border-b border-outline-variant/20">
-            {columns.map((col) => (
-              <th key={col} className="py-1 pr-3 font-bold uppercase tracking-widest text-[9px]">
-                {col}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {limited.map((row, idx) => (
-            <tr key={idx} className="border-b border-outline-variant/10">
-              {columns.map((col) => (
-                <td key={col} className="py-1 pr-3 text-on-surface">
-                  {formatCell(row[col])}
-                </td>
+    <div className="mt-3">
+      <details className="group border border-gray-700 rounded-md bg-gray-900 overflow-hidden">
+        <summary className="p-2 cursor-pointer text-xs font-semibold hover:bg-gray-800 transition-colors select-none flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-gray-400 font-mono transition-transform duration-200 group-open:rotate-90">▶</span>
+            <span>View Raw Data ({records.length} rows)</span>
+          </div>
+        </summary>
+        <div className="w-full overflow-x-auto border-t border-gray-700 bg-gray-950 p-2">
+          <table className="w-full text-xs text-left whitespace-nowrap">
+            <thead>
+              <tr className="border-b border-gray-700">
+                {columns.map((col) => (
+                  <th key={col} className="px-3 py-2 font-mono text-outline">
+                    {col}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {limited.map((row, i) => (
+                <tr key={i} className="border-b border-gray-800/40 hover:bg-gray-800/20">
+                  {columns.map((col) => {
+                    const val = row[col];
+                    const displayVal =
+                      val !== null && val !== undefined ? String(val) : "null";
+                    return (
+                      <td key={col} className="px-3 py-1 font-mono text-gray-300">
+                        {displayVal}
+                      </td>
+                    );
+                  })}
+                </tr>
               ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+            </tbody>
+          </table>
+          {records.length > 8 && (
+            <p className="px-3 py-2 text-xs italic text-outline border-t border-gray-800">
+              Showing first 8 records. Next {records.length - 8} rows truncated.
+            </p>
+          )}
+        </div>
+      </details>
     </div>
   );
 };
