@@ -6,6 +6,15 @@ By utilizing high-speed **Agentic Orchestration** and localized embedded databas
 
 ---
 
+## 📸 Interface Previews
+Here is how the reactive UI handles real-time executive queries, automatically folding large datasets and drawing insight visualizations via the swarm architecture.
+
+![Interface Execution 1](founder_bi_agent/Project_Images/Run_1.png)
+![Interface Execution 2](founder_bi_agent/Project_Images/Run_2.png)
+![Interface Execution 3](founder_bi_agent/Project_Images/Run_3.png)
+
+---
+
 ## 🚀 The Core Problem It Solves
 
 Historically, if a CEO needed to know *"What is the exact pipeline value of deals closing this quarter broken down by sector?"*, the workflow looked like this:
