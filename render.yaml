@@ -1,9 +1,9 @@
 services:
-  # The FastAPI Inference Hub
+  # Singular Consolidated Service (Hosts FastAPI Engine + Serves React Native Payload natively!)
   - type: web
-    name: founder-bi-backend
+    name: founder-bi-unified
     env: docker
-    dockerfilePath: ./founder_bi_agent/backend/Dockerfile
+    dockerfilePath: ./Dockerfile
     plan: starter
     envVars:
       - key: LLM_PROVIDER
@@ -16,17 +16,3 @@ services:
         sync: false
       - key: ALLOWED_ORIGINS
         value: "*"
-
-  # The Vite React UI Client
-  - type: web
-    name: founder-bi-frontend
-    env: docker
-    rootDir: founder_bi_agent/frontend
-    dockerfilePath: ./Dockerfile
-    plan: starter
-    envVars:
-      - key: VITE_BACKEND_URL
-        fromService:
-          type: web
-          name: founder-bi-backend
-          envVarKey: RENDER_EXTERNAL_URL

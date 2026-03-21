@@ -467,3 +467,22 @@ def get_invoice_status() -> PipelineDataResponse:
     except Exception as exc:
         logger.exception("get_invoice_status.error: %s", str(exc))
         return PipelineDataResponse(data=[], error=str(exc))
+
+# ============================================================================
+# PHASE 4: UNIFIED SINGLE PAGE APPLICATION (SPA) SERVING
+# ============================================================================
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
+
+dist_dir = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
+if os.path.exists(dist_dir):
+    app.mount("/assets", StaticFiles(directory=os.path.join(dist_dir, "assets")), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        file_path = os.path.join(dist_dir, full_path)
+        if os.path.isfile(file_path):
+            return FileResponse(file_path)
+        # Natively intercept React Router domain fallbacks
+        return FileResponse(os.path.join(dist_dir, "index.html"))

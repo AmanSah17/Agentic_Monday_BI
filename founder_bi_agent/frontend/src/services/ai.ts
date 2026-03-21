@@ -48,6 +48,9 @@ function apiBaseUrl() {
   if (explicit && explicit.trim()) {
     return explicit.trim().replace(/\/+$/, "");
   }
+  if (import.meta.env.PROD) {
+    return "";
+  }
   return "/api";
 }
 
