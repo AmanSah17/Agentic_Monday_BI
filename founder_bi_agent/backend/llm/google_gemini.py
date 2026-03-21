@@ -1,5 +1,4 @@
-from __future__ import annotations
-
+from google import genai
 from typing import Any
 
 from founder_bi_agent.backend.config import AgentSettings
@@ -9,33 +8,15 @@ from founder_bi_agent.backend.llm.fallback_insight import generate_insight_from_
 class GeminiSQLPlanner:
     def __init__(self, settings: AgentSettings):
         self.settings = settings
-        self._clients: dict[str, Any] = {}
+        self.client = genai.Client(api_key=self.settings.google_api_key)
         self.last_generation_meta: dict[str, Any] = {
             "provider": settings.llm_provider,
             "mode": "uninitialized",
         }
 
-    def _create_client(self, model: str) -> Any:
-        if not self.settings.google_api_key:
-            raise RuntimeError("GOOGLE_API_KEY is not set.")
-        try:
-            from langchain_google_genai import ChatGoogleGenerativeAI
-        except ImportError as exc:
-            raise RuntimeError(
-                "Install langchain-google-genai to use Gemini."
-            ) from exc
-        return ChatGoogleGenerativeAI(
-            model=model,
-            google_api_key=self.settings.google_api_key,
-            temperature=0,
-            max_retries=0,
-            timeout=20,
-        )
-
     def _get_client(self, model: str) -> Any:
-        if model not in self._clients:
-            self._clients[model] = self._create_client(model)
-        return self._clients[model]
+        # With the new SDK, we mainly use the shared client.
+        return self.client
 
     def _candidate_models(self) -> list[str]:
         ordered = [self.settings.llm_sql_model, *self.settings.llm_sql_model_variants]
@@ -74,12 +55,17 @@ class GeminiSQLPlanner:
                 f"Schema:\n{schema_hint}\n\n"
                 f"Question:\n{question}\n"
             )
+            print(f"DEBUG SQL PROMPT:\n{prompt[:1000]}...")
 
             for model in candidates:
                 try:
-                    client = self._get_client(model)
-                    response = client.invoke(prompt)
-                    sql_text = getattr(response, "content", "") or ""
+                    # New SDK generate_content call
+                    response = self.client.models.generate_content(
+                        model=model,
+                        contents=prompt,
+                        config={"temperature": 0}
+                    )
+                    sql_text = response.text or ""
                     sql_text = str(sql_text).strip()
                     if not sql_text:
                         failures.append({"model": model, "error": "empty_sql_output"})
@@ -94,6 +80,7 @@ class GeminiSQLPlanner:
                     return sql_text
                 except Exception as model_exc:
                     error_text = str(model_exc)
+                    print(f"DEBUG SQL GENERATION ERROR for model {model}: {error_text}")
                     failures.append({"model": model, "error": error_text})
                     upper = error_text.upper()
                     # if "RESOURCE_EXHAUSTED" in upper or "QUOTA" in upper or "429" in upper:
@@ -119,34 +106,15 @@ class GeminiSQLPlanner:
 
 class GeminiFoundationClient:
     """
-    Foundation reasoning client using Gemini.
-    Handles semantic routing, clarification, and insight writing.
+    Foundation reasoning client using Gemini (google-genai SDK).
     """
 
     def __init__(self, settings: AgentSettings):
         self.settings = settings
-        self._clients: dict[str, Any] = {}
-
-    def _create_client(self, model: str) -> Any:
-        try:
-            from langchain_google_genai import ChatGoogleGenerativeAI
-        except ImportError as exc:
-            raise RuntimeError(
-                "Install langchain-google-genai to use Gemini foundation client."
-            ) from exc
-
-        return ChatGoogleGenerativeAI(
-            model=model,
-            google_api_key=self.settings.google_api_key,
-            temperature=0.1,
-            max_retries=1,
-            timeout=30,
-        )
+        self.client = genai.Client(api_key=self.settings.google_api_key)
 
     def _get_client(self, model: str) -> Any:
-        if model not in self._clients:
-            self._clients[model] = self._create_client(model)
-        return self._clients[model]
+        return self.client
 
     def _candidate_models(self) -> list[str]:
         ordered = [
@@ -194,9 +162,12 @@ class GeminiFoundationClient:
         )
         for model in self._candidate_models():
             try:
-                client = self._get_client(model)
-                response = client.invoke(prompt)
-                intent = str(getattr(response, "content", "")).strip().lower()
+                response = self.client.models.generate_content(
+                    model=model,
+                    contents=prompt,
+                    config={"temperature": 0}
+                )
+                intent = str(response.text or "").strip().lower()
                 if intent in {"pipeline_health", "general_bi"}:
                     return intent
             except Exception:
@@ -229,9 +200,12 @@ class GeminiFoundationClient:
         )
         for model in self._candidate_models():
             try:
-                client = self._get_client(model)
-                response = client.invoke(prompt)
-                content = str(getattr(response, "content", "")).strip()
+                response = self.client.models.generate_content(
+                    model=model,
+                    contents=prompt,
+                    config={"temperature": 0.1}
+                )
+                content = str(response.text or "").strip()
                 
                 import json
                 if content.startswith("```json"):
@@ -263,23 +237,29 @@ class GeminiFoundationClient:
             data_preview = "No rows returned."
 
         prompt = (
-            "You are a business intelligence analyst writing a concise final insight for the founder.\n"
+            "You are a Senior Business Intelligence Analyst presenting to a CEO/Founder.\n"
             f"Question: {question}\n\n"
+            "SYSTEM DATA ANALYSIS:\n"
+            f"{question.split('[DATA SUMMARY]:')[1] if '[DATA SUMMARY]:' in question else 'N/A'}\n\n"
             f"SQL Execution Error (if any): {sql_execution_error or 'None'}\n\n"
-            f"Data Preview (Top 5 rows):\n{data_preview}\n\n"
+            f"Data Preview (Top 5 rows for column inspiration):\n{data_preview}\n\n"
             "Instructions:\n"
-            "1. Answer the question directly using the data preview.\n"
-            "2. If no data was returned, state that.\n"
-            "3. If there was an SQL error, state that a fallback query was used.\n"
-            "4. Be very concise, professional, and do not repeat the data preview in table format, just summarize the insight."
+            "1. Synthesize the SYSTEM DATA ANALYSIS into a high-level business narrative.\n"
+            "2. **Cross-Table Awareness**: If data from both Deals and Work Orders is present, highlight the 'Gap' (e.g., pipeline vs realized cash).\n"
+            "3. Identify the 'Headline Story' (e.g., 'Your conversion rate in Mining is 80%, but only 20% in Energy').\n"
+            "4. **Proactive Follow-ups**: Mandatory section '### Recommended Follow-ups' with 3 data-driven questions.\n"
+            "5. Be professional, direct, and slightly provocative."
         )
         
         last_error = ""
         for model in self._candidate_models_for_insight():
             try:
-                client = self._get_client(model)
-                response = client.invoke(prompt)
-                return str(getattr(response, "content", "")).strip()
+                response = self.client.models.generate_content(
+                    model=model,
+                    contents=prompt,
+                    config={"temperature": 0.2}
+                )
+                return str(response.text or "").strip()
             except Exception as e:
                 last_error = str(e)
                 continue
@@ -291,3 +271,55 @@ class GeminiFoundationClient:
         except Exception:
             # Final fallback if even simple insight generation fails
             return f"Query executed successfully and returned {len(result_df) if result_df is not None and not result_df.empty else 0} results. LLM insight generation unavailable, but data retrieval was successful."
+
+    def refine_plan(self, question: str, history: list[dict[str, str]] = None) -> tuple[bool, str, str]:
+        """
+        Act as the Executive Brain to determine if web context or deep-dive analysis is needed.
+        Returns: (needs_web_search, search_query, internal_reasoning)
+        """
+        system_prompt = (
+            "You are the Executive Brain for Agentic Monday BI. Overlook the user's BI query. "
+            "Determine if answering this requires external market context OR a deep-dive statistical analysis of previously retrieved data. "
+            "If the user asks for 'in-depth', 'deep dive', or 'analyze the results', prioritize aggregation over simple listing. "
+            "Respond in strictly structured format: \n"
+            "<think>...your reasoning about whether to search the web or do a deep-dive data analysis...</think>\n"
+            "<needs_web_search>true/false</needs_web_search>\n"
+            "<search_query>best web search query if needed</search_query>"
+        )
+        
+        history_context = ""
+        if history:
+            history_lines = []
+            for msg in history:
+                role = msg.get("role", "user").upper()
+                content = msg.get("content", "").strip()
+                if content and len(content) < 500:
+                    history_lines.append(f"{role}: {content}")
+            if history_lines:
+                history_context = "\\nPrior Conversation:\\n" + "\\n".join(history_lines)
+                
+        prompt = f"{system_prompt}\\n{history_context}\\n\\nCurrent Question: {question}"
+
+        for model in self._candidate_models():
+            try:
+                response = self.client.models.generate_content(
+                    model=model,
+                    contents=prompt,
+                    config={"temperature": 0}
+                )
+                content = str(response.text or "").strip()
+                
+                think_tag = content.split("</think>")
+                reasoning = think_tag[0].replace("<think>", "").strip() if len(think_tag) > 1 else ""
+                
+                needs_search = "<needs_web_search>true" in content.lower()
+                
+                search_query = ""
+                if "<search_query>" in content and "</search_query>" in content:
+                    search_query = content.split("<search_query>")[1].split("</search_query>")[0].strip()
+                    
+                return needs_search, search_query, reasoning
+            except Exception:
+                continue
+                
+        return False, "", "Gemini reasoning failed."

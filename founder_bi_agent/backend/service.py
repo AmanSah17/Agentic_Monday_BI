@@ -49,9 +49,11 @@ class FounderBIService:
     def run_query(
         self,
         question: str,
+        session_id: str = "default_session",
         conversation_history: list[dict[str, str]] | None = None,
     ) -> dict[str, Any]:
         initial_state: dict[str, Any] = {
+            "session_id": session_id,
             "question": question,
             "conversation_history": conversation_history or [],
             "traces": [],
@@ -76,6 +78,7 @@ class FounderBIService:
             "board_map": state.get("board_map", {}),
             "board_schemas": state.get("board_schemas", []),
             "table_schemas": state.get("table_schemas", {}),
+            "last_result_summary": state.get("last_result_summary", ""),
             "traces": state.get("traces", []),
         }
 

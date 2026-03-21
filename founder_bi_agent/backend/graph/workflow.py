@@ -23,6 +23,7 @@ def build_graph(settings: AgentSettings):
     nodes = FounderBINodes(settings)
     graph = StateGraph(BIState)
 
+    graph.add_node("memory_retriever", nodes.memory_retriever)
     graph.add_node("intent_router", nodes.intent_router)
     graph.add_node("clarifier", nodes.clarifier)
     graph.add_node("deepseek_executive_planner", nodes.deepseek_executive_planner)
@@ -34,11 +35,13 @@ def build_graph(settings: AgentSettings):
     graph.add_node("text2sql_planner", nodes.text2sql_planner)
     graph.add_node("sql_guardrail", nodes.sql_guardrail)
     graph.add_node("sql_execute", nodes.sql_execute)
+    graph.add_node("data_summarizer", nodes.data_summarizer)
     graph.add_node("insight_writer", nodes.insight_writer)
     graph.add_node("viz_builder", nodes.viz_builder)
     graph.add_node("reflection_judge", nodes.reflection_judge)
 
-    graph.add_edge(START, "intent_router")
+    graph.add_edge(START, "memory_retriever")
+    graph.add_edge("memory_retriever", "intent_router")
     graph.add_edge("intent_router", "clarifier")
     graph.add_conditional_edges(
         "clarifier",
@@ -72,7 +75,8 @@ def build_graph(settings: AgentSettings):
             "go": "sql_execute",
         },
     )
-    graph.add_edge("sql_execute", "insight_writer")
+    graph.add_edge("sql_execute", "data_summarizer")
+    graph.add_edge("data_summarizer", "insight_writer")
     graph.add_edge("insight_writer", "viz_builder")
     graph.add_edge("viz_builder", "reflection_judge")
     graph.add_edge("reflection_judge", END)

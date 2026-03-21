@@ -14,11 +14,13 @@ import pandas as pd
 from pydantic import BaseModel, Field
 
 from founder_bi_agent.backend.history_store import ConversationHistoryStore
+from founder_bi_agent.backend.vector_memory import VectorMemoryStore
 from founder_bi_agent.backend.service import FounderBIService
 
 app = FastAPI(title="Founder BI Backend", version="0.1.0")
 service = FounderBIService()
 history_store = ConversationHistoryStore()
+vector_store = VectorMemoryStore(service.settings)
 logger = logging.getLogger("founder_bi_api")
 if not logger.handlers:
     handler = logging.StreamHandler()
@@ -58,6 +60,7 @@ class QueryResponse(BaseModel):
     board_schemas: list[dict[str, Any]] = Field(default_factory=list)
     table_schemas: dict[str, list[dict[str, Any]]] = Field(default_factory=dict)
     traces: list[dict[str, Any]] = Field(default_factory=list)
+    last_result_summary: str | None = None
     conversation_history_length: int = 0
     history_backend: str = "sqlite"
 
@@ -139,6 +142,7 @@ def query(payload: QueryRequest) -> QueryResponse:
     try:
         result = service.run_query(
             question=payload.question,
+            session_id=session_id,
             conversation_history=merged_history,
         )
     except Exception as exc:
@@ -169,6 +173,11 @@ def query(payload: QueryRequest) -> QueryResponse:
             {"role": "assistant", "content": assistant_text},
         ],
     )
+    
+    # Store interaction and summary in Vector memory for long-term coherence
+    summary = safe_result.get("last_result_summary", "")
+    vector_store.add_interaction(session_id, payload.question, f"{assistant_text}\n\n[Summary of data seen]:\n{summary}")
+    
     status = history_store.status()
 
     elapsed_ms = int((time.perf_counter() - started) * 1000)

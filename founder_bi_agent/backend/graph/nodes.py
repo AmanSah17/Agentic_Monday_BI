@@ -20,6 +20,7 @@ from founder_bi_agent.backend.sql.sql_planner import build_schema_hint, generate
 from founder_bi_agent.backend.tools.monday_bi_tools import MondayBITools
 from founder_bi_agent.backend.tools.web_research_tools import WebResearchTools
 from founder_bi_agent.backend.llm.huggingface_client import HuggingFaceClient
+from founder_bi_agent.backend.vector_memory import VectorMemoryStore
 
 
 def _append_trace(state: dict[str, Any], node: str, details: dict[str, Any]) -> list[dict[str, Any]]:
@@ -39,13 +40,16 @@ class FounderBINodes:
         self.settings = settings
         self.monday_tools = MondayBITools(settings)
         self.web_tools = WebResearchTools(settings)
-        self.executive_brain = HuggingFaceClient(settings)
-        if settings.llm_provider == "groq":
-            self.foundation_llm = GroqFoundationClient(settings)
-            self.sql_planner = GroqSQLPlanner(settings)
-        elif settings.llm_provider == "gemini":
+        self.vector_store = VectorMemoryStore(settings)
+        
+        if settings.llm_provider == "gemini":
             self.foundation_llm = GeminiFoundationClient(settings)
             self.sql_planner = GeminiSQLPlanner(settings)
+            self.executive_brain = self.foundation_llm
+        elif settings.llm_provider == "groq":
+            self.executive_brain = HuggingFaceClient(settings)
+            self.foundation_llm = GroqFoundationClient(settings)
+            self.sql_planner = GroqSQLPlanner(settings)
         elif settings.llm_provider in {"vllm", "openai_compat", "openai", "huggingface"}:
             self.foundation_llm = GLMFoundationClient(settings)
             self.sql_planner = VLLMSQLPlanner(settings)
@@ -55,6 +59,15 @@ class FounderBINodes:
         else:
             self.foundation_llm = GLMFoundationClient(settings)
             self.sql_planner = None
+
+    def memory_retriever(self, state: dict[str, Any]) -> dict[str, Any]:
+        session_id = state.get("session_id", "default_session")
+        question = state.get("question", "")
+        context = self.vector_store.get_relevant_context(session_id, question)
+        return {
+            "long_term_context": context,
+            "traces": _append_trace(state, "memory_retriever", {"context_length": len(context)}),
+        }
 
     def intent_router(self, state: dict[str, Any]) -> dict[str, Any]:
         question = state["question"]
@@ -175,7 +188,7 @@ class FounderBINodes:
 
         for table_name, df in raw_tables.items():
             cdf = df.copy()
-            cdf.columns = [str(c).strip().lower() for c in cdf.columns]
+            cdf.columns = [str(c).strip().lower().replace(" ", "_") for c in cdf.columns]
 
             for col in cdf.columns:
                 if cdf[col].dtype == "object":
@@ -325,9 +338,10 @@ class FounderBINodes:
         board_schemas = state.get("board_schemas", [])
         table_schemas = state.get("table_schemas", {})
         sql_execution_error = state.get("sql_execution_error")
+        summary = state.get("last_result_summary", "")
 
         answer = self.foundation_llm.write_insight(
-            question=question,
+            question=f"{question}\n\n[DATA SUMMARY]:\n{summary}",
             result_df=result_df,
             quality_report=quality_report,
             table_schemas=table_schemas,
@@ -367,19 +381,94 @@ class FounderBINodes:
             ),
         }
 
+    def data_summarizer(self, state: dict[str, Any]) -> dict[str, Any]:
+        """Generates a deep statistical and business-centric summary of the result_df."""
+        df: pd.DataFrame = state.get("result_df", pd.DataFrame())
+        if df.empty:
+            return {"last_result_summary": "Empty result set."}
+        
+        summary_parts = []
+        row_count = len(df)
+        summary_parts.append(f"### [EXPERT DATA PROFILE]: {row_count} records analyzed.")
+        
+        # 1. Categorical Concentration
+        for col in df.columns:
+            if df[col].dtype == 'object' or df[col].nunique() < 15:
+                counts = df[col].value_counts()
+                top_val = counts.index[0] if not counts.empty else "N/A"
+                top_pct = (counts.iloc[0] / row_count * 100) if not counts.empty else 0
+                summary_parts.append(f"- **{col} Concentration**: '{top_val}' accounts for {top_pct:.1f}% of data.")
+                if len(counts) > 1:
+                    summary_parts.append(f"  - Top 3: {counts.head(3).to_dict()}")
+
+        # 2. Numeric Aggregates & Value Concentration
+        numeric_cols = df.select_dtypes(include=['number']).columns
+        for col in numeric_cols:
+            total = df[col].sum()
+            avg = df[col].mean()
+            summary_parts.append(f"- **{col} Metrics**: Total={total:,.2f}, Avg={avg:,.2f}")
+            
+            # Value concentration (Pareto check)
+            if row_count > 5:
+                top_5_sum = df[col].sort_values(ascending=False).head(5).sum()
+                pareto_pct = (top_5_sum / total * 100) if total > 0 else 0
+                summary_parts.append(f"  - Value Concentration: Top 5 records command {pareto_pct:.1f}% of total {col}.")
+
+        # 3. Temporal Momentum (if date columns exist)
+        date_cols = df.select_dtypes(include=['datetime']).columns
+        for col in date_cols:
+            recent_count = len(df[df[col] > (datetime.now() - pd.Timedelta(days=30))])
+            summary_parts.append(f"- **{col} Momentum**: {recent_count} records created/updated in the last 30 days.")
+
+        # 4. Cross-Table Consolidation (if both exist)
+        cleaned_tables = state.get("cleaned_tables", {})
+        if "deals" in cleaned_tables and "work_orders" in cleaned_tables:
+            d_df = cleaned_tables["deals"]
+            w_df = cleaned_tables["work_orders"]
+            
+            # Check for item_name instead of deal_name
+            join_key = "item_name" if ("item_name" in d_df.columns and "item_name" in w_df.columns) else None
+            
+            if join_key:
+                common_deals = set(d_df[join_key]).intersection(set(w_df[join_key]))
+                summary_parts.append(f"### [CONSOLIDATION INSIGHT]")
+                summary_parts.append(f"- **Yield Connectivity**: {len(common_deals)} deals have corresponding Work Orders ({len(common_deals)/max(len(d_df),1)*100:.1f}% coverage).")
+                
+                d_val_col = 'masked_deal_value' if 'masked_deal_value' in d_df.columns else None
+                w_val_col = 'amount_in_rupees_incl_of_gst_masked' if 'amount_in_rupees_incl_of_gst_masked' in w_df.columns else None
+                
+                if d_val_col and w_val_col:
+                    p_val = d_df[d_val_col].sum()
+                    r_val = w_df[w_val_col].sum()
+                    summary_parts.append(f"- **Pipeline vs Realized**: Pipeline=${p_val:,.2f} | Realized=${r_val:,.2f}")
+            else:
+                summary_parts.append(f"### [CONSOLIDATION GAP]: Joined keys (item_name) not found for cross-table yield analysis.")
+
+        summary_text = "\n".join(summary_parts)
+        return {
+            "last_result_summary": summary_text,
+            "traces": _append_trace(
+                state,
+                "data_summarizer",
+                {"analysis_depth": "expert", "summary_len": len(summary_text)}
+            ),
+        }
+
     @staticmethod
     def _build_contextual_question(state: dict[str, Any]) -> str:
         question = str(state.get("question", ""))
+        long_term_context = str(state.get("long_term_context", ""))
         history = state.get("conversation_history", []) or []
         recent_user_turns = [
             str(turn.get("content", ""))
             for turn in history
             if str(turn.get("role", "")).lower() == "user"
         ][-3:]
-        if not recent_user_turns:
-            return question
-        history_block = "\n".join(f"- {turn}" for turn in recent_user_turns)
-        return f"Conversation context:\n{history_block}\n\nCurrent question: {question}"
+        
+        history_block = "\\n".join(f"- {turn}" for turn in recent_user_turns) if recent_user_turns else "None"
+        summary = state.get("last_result_summary", "")
+        summary_block = f"\\n\\nPrevious Data Summary:\\n{summary}" if summary else ""
+        return f"{long_term_context}{summary_block}\\nConversation context:\\n{history_block}\\n\\nCurrent question: {question}"
 
     def deepseek_executive_planner(self, state: dict[str, Any]) -> dict[str, Any]:
         question = state["question"]

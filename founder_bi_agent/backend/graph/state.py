@@ -6,8 +6,10 @@ import pandas as pd
 
 
 class BIState(TypedDict, total=False):
+    session_id: str
     question: str
     conversation_history: list[dict[str, str]]
+    long_term_context: str
     intent: str
     needs_clarification: bool
     clarification_question: str
@@ -25,6 +27,7 @@ class BIState(TypedDict, total=False):
     sql_validation_error: str | None
     sql_execution_error: str | None
     result_df: pd.DataFrame
+    last_result_summary: str
     answer: str
     chart_spec: dict[str, Any]
     web_research_results: list[dict[str, Any]]

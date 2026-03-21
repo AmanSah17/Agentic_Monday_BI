@@ -50,7 +50,22 @@ def generate_sql_heuristic(question: str, available_tables: Iterable[str]) -> st
         ) AS all_dates
         """
 
-    if "deals" in tables and "pipeline" in q and "sector" in q:
+    if "deals" in tables and "work_orders" in tables and ("conversion" in q or "yield" in q or "actual vs forecast" in q):
+        return """
+        SELECT
+            d.sectorservice AS sector,
+            COUNT(DISTINCT d.item_id) AS total_deals,
+            SUM(COALESCE(d.masked_deal_value, 0)) AS pipeline_value,
+            COUNT(DISTINCT w.item_id) AS won_work_orders,
+            SUM(COALESCE(w.amount_in_rupees_incl_of_gst_masked, 0)) AS actual_realized_value,
+            (SUM(COALESCE(w.amount_in_rupees_incl_of_gst_masked, 0)) / NULLIF(SUM(COALESCE(d.masked_deal_value, 0)), 0)) * 100 AS yield_pct
+        FROM deals d
+        LEFT JOIN work_orders w ON d.item_name = w.item_name
+        GROUP BY 1
+        ORDER BY yield_pct DESC
+        """
+
+    if "deals" in tables and ("pipeline" in q or "deals" in q) and "sector" in q:
         return """
         SELECT
             COALESCE(sectorservice, 'Unknown') AS sector,
@@ -113,6 +128,21 @@ def generate_sql_heuristic(question: str, available_tables: Iterable[str]) -> st
         ORDER BY work_order_count DESC
         """
 
+    if "deals" in tables and "work_orders" in tables and ("conversion" in q or "yield" in q or "actual vs forecast" in q):
+        return """
+        SELECT
+            d.sector_service,
+            COUNT(DISTINCT d.item_id) AS total_deals,
+            SUM(COALESCE(d.deal_value, 0)) AS pipeline_value,
+            COUNT(DISTINCT w.item_id) AS won_work_orders,
+            SUM(COALESCE(w.total_project_value_masked, 0)) AS actual_realized_value,
+            (SUM(COALESCE(w.total_project_value_masked, 0)) / NULLIF(SUM(COALESCE(d.deal_value, 0)), 0)) * 100 AS yield_pct
+        FROM deals d
+        LEFT JOIN work_orders w ON d.deal_name = w.deal_name
+        GROUP BY 1
+        ORDER BY yield_pct DESC
+        """
+
     first_table = tables[0] if tables else "deals"
     return f"SELECT * FROM {first_table} LIMIT 50000"
 
@@ -158,5 +188,10 @@ def build_schema_hint(tables: dict[str, pd.DataFrame]) -> str:
                     min_val = non_null_vals.min()
                     max_val = non_null_vals.max()
                     lines.append(f"    Range: {min_val} to {max_val}")
+    
+    lines.append("\n### DATA CONSOLIDATION GUIDE")
+    lines.append("- Use `deals.item_name` to JOIN with `work_orders.item_name`.")
+    lines.append("- `deals` represents the sales pipeline (forecasts).")
+    lines.append("- `work_orders` represents actual project execution and financial realization (billed/collected).")
     
     return "\n".join(lines)
