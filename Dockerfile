@@ -1,28 +1,22 @@
-# Stage 1: Build the React frontend
-FROM node:18-alpine AS frontend-builder
-
-WORKDIR /app/frontend
-
-COPY founder_bi_agent/frontend/package*.json ./
-RUN npm install
-
-COPY founder_bi_agent/frontend/ ./
-RUN npm run build
-
-# Stage 2: Build the FastAPI backend and serve React
+# Unified Production Dockerfile
 FROM python:3.10-slim
+
+# Install system dependencies & Node.js (required for build.sh)
+RUN apt-get update && apt-get install -y \
+    curl \
+    gnupg \
+    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Install backend dependencies explicitly
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy the entire project
+COPY . .
 
-# Bind the underlying monolithic package code
-COPY . /app
-
-# Extract the compiled React payload from Stage 1 into the python directory
-COPY --from=frontend-builder /app/frontend/dist /app/founder_bi_agent/frontend/dist
+# Ensure build.sh is executable and run the standard build process
+RUN chmod +x build.sh
+RUN ./build.sh
 
 # Render implicitly passes the PORT variable, we map FastAPI directly to it
 CMD python -m uvicorn founder_bi_agent.backend.api:app --host 0.0.0.0 --port ${PORT:-8000}
