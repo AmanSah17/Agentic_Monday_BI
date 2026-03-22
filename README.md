@@ -1,81 +1,72 @@
-# 📈 Executive Intelligence BI Agent (V2)
+# 📈 Executive Intelligence BI Agent (V3 - Agentic Edition)
 
-A high-performance Business Intelligence and Data Science dashboard designed for founders and executives. This agent connects directly to Monday.com boards, processes massive datasets using DuckDB, and delivers interactive, actionable insights through a custom-built draggable grid interface.
-
----
-
-## 🌟 V2 Interactive Dashboard
-The core of this release is the **V2 Data Science Dashboard**, an interactive workspace that empowers executives to customize their view of the business.
-
-### Key Features:
-- **Draggable & Resizable Grid:** Built with a custom implementation of `react-grid-layout` and a native `ResizeObserver` engine for seamless 12-column responsive layout management.
-- **Real-Time Data Sync:** Direct integration with Monday.com via a high-performance Python backend.
-- **Optimized Latency:** Utilizes a single consolidated API endpoint (`/analytics/dashboard-all`) powered by `DuckDB` on the backend to reduce multi-chart load times from minutes to under 14 seconds.
+A production-grade Business Intelligence platform designed for Founders and CEOs. This system leverages **LangGraph-driven agentic reasoning**, **DuckDB analytical processing**, and a **Draggable React Dashboard** to transform Monday.com data into strategic insights.
 
 ---
 
-## 🔬 Data Science Insights
-Seven deep-dive analytical modules providing high-resolution visibility into operations and sales.
+## 🧠 Backend Architecture: The 15-Node Reasoning Engine
 
-1.  **Revenue Leakage Waterfall:** Tracks value drop-off from `Quoted Amount (GST Incl)` to `Billed Amount` and finally `Actually Collected` per sector.
-2.  **Execution Velocity (Bottleneck Analysis):** Calculates the delta between `Probable Start Dates` and `Actual Billing Months` to identify systematic delays in project execution.
-3.  **Predictive Pipeline Matrix:** Real-time modeling of `Deal Status` aligned against mathematical `Closure Probability` to forecast true revenue.
-4.  **Owner Performance Matrix:** Scatters team members based on their `Active Pipeline Value` and modeled `Win Probability`.
-5.  **Client Concentration (Pareto):** Distribution of pipeline value across clients to identify key account dependencies.
-6.  **Operational Volume vs Billed:** Critical comparison of physical operational activity against actual financial billing quantity.
-7.  **Average Deal Size Analysis:** Segmentation of average deal values by product nature and deal structure.
+The core of the system is a sophisticated **Nodal Reasoning Agent** built on LangGraph. Unlike traditional dashboards that simply dump data, this agent *thinks* through every query using a deterministic yet smart traversal.
+
+### 1. Intent & Context Phase
+- **Memory Retriever**: Scans vector memory for conversation history and user preferences.
+- **Intent Router**: Classifies queries into recursive logic paths (e.g., `pipeline_health`, `operational_audit`).
+- **Clarifier**: Pauses execution if the query is ambiguous, ensuring precisely filtered data.
+
+### 2. Live Discovery Phase
+- **Executive Planner**: Determines if external web research (via Tavily) is needed to supplement board data.
+- **Schema Discovery**: Real-time auditing of Monday.com board structures—detecting column changes dynamically.
+- **Data Normalize & Profile**: Cleans currency, sanitizes dates, and profiles data quality (missing values/anomalies).
+
+### 3. Intelligence & Synthesis Phase
+- **Text2SQL Planner**: Translates natural language into high-performance DuckDB SQL.
+- **Data Summarizer**: Performs automated Pareto Analysis, Temporal Momentum tracking, and Cross-Table Yield connectivity.
+- **Insight Writer**: Synthesizes SQL results and statistical profiles into a narrative business story.
+- **Reflection Judge**: A self-correcting node that retries the process if the result is logically inconsistent.
+
+---
+
+## 🎨 Frontend Implementation: Per-Page Breakdown
+
+The frontend is a high-performance React application optimized for "Executive Overview" and "Deep Dive" modes.
+
+### 1. Analytics Dashboard (`/dashboard`)
+- **Draggable Mesh**: 12-column responsive grid allowing complete layout customization.
+- **Visual Intelligence**: 7 specialized charts (Recharts) for Revenue Leakage, Velocity Matrix, and Portfolio Risk.
+- **Logic Annotations**: Every chart includes a **"Logic & Insights"** block that explains the *business meaning* behind the data, formatted for quick executive reading.
+- **Horizontal Throughput**: Chart 5 (Operations Matrix) uses a specialized horizontal scrollable layout to handle 25+ detailed status categories without label collision.
+
+### 2. AI Chat Experience (`/chat`)
+- **Reasoning Trace**: A dedicated sidebar showing the agent's "Thought Process" in real-time as it traverses the 15-node backend graph.
+- **Streaming Insights**: Markdown-rendered responses that incorporate data-driven recommendations and "Headline Stories."
+- **Interactive Widgets**: Integrated chart rendering within the chat flow for immediate visual proof.
+
+### 3. Navigation & Core Architecture
+- **Path-Based Routing**: Native support for `/chat` and `/dashboard` allowing deep-linking and "Open in New Tab" functionality.
+- **Sidebar Engine**: Anchor-based navigation with `popstate` listeners for SPA performance with multi-tab flexibility.
+- **State Management**: Unified `BIState` ensuring consistency between what the agent "talks about" and what the dashboard "shows."
 
 ---
 
 ## 🛠 Tech Stack
 
-### Frontend
-- **Framework:** React + Vite + TypeScript
-- **Visualization:** Recharts (Sanitized for SVG precision)
-- **Layout:** react-grid-layout + custom ResizeObserver
-- **Animations:** Framer Motion
-
-### Backend
-- **Engine:** FastAPI (Python 3.10)
-- **Database:** DuckDB (OLAP-optimized)
-- **Integration:** Monday.com API (MondayBITools)
+- **Backend**: FastAPI, LangGraph, DuckDB, Google Gemini (Pro), Pydantic.
+- **Frontend**: React 18, Vite, Recharts, Framer Motion, Tailwind CSS.
+- **Integration**: Monday.com GraphQL API, Vector Memory (ChromaDB).
 
 ---
 
-## 🚀 Deployment
+## 🚀 Getting Started
 
 ### Local Development
-1. **Backend:**
+1. **Infrastructure**: Start the unified server on port `8010`.
    ```bash
-   cd founder_bi_agent/backend
-   pip install -r requirements.txt
-   python -m uvicorn api:app --reload --port 8010
+   python -m uvicorn founder_bi_agent.backend.main:app --port 8010
    ```
-2. **Frontend:**
+2. **Frontend Debugging**: Start Vite on port `3001` (proxied to 8010).
    ```bash
-   cd founder_bi_agent/frontend
-   npm install
-   npm run dev
+   cd founder_bi_agent/frontend && npm run dev
    ```
 
-### Production (Render.com)
-The project is optimized for Render's **Blueprint** deployment using a **Containerized** approach (`render.yaml` + `Dockerfile` + `build.sh`).
-
-#### Step-by-Step Deployment:
-1.  **Push to GitHub:** Ensure your latest changes are in the `main` branch.
-2.  **New Blueprint:** In the Render Dashboard, click **New +** and select **Blueprint**.
-3.  **Connect Repo:** Select your `Agentic_Monday_BI` repository.
-4.  **Automatic Detection:** Render will identify `render.yaml` and the `Dockerfile`.
-5.  **Environment Variables:** You will be prompted to enter your secret keys:
-    *   `MONDAY_COM_API_KEY`: Your Monday.com developer token.
-    *   `LLM_PROVIDER`: Set to `google` or `huggingface`.
-    *   `GOOGLE_API_KEY` / `HUGGINGFACE_API_KEY`: Based on your choice.
-    *   `TAVILY_API_KEY`: For search capabilities.
-6.  **Deploy:** Click **Apply**. 
-
-Render will now build the Docker image, execute the `build.sh` inside the container, and launch your V2 Dashboard as a standard Web Service.
-
----
-
-## 📂 Implementation Details
-The dashboard's layout is dynamically managed in `AnalyticsDashboard.tsx`. Each chart represents a "Widget" that can be moved or resized. The backend logic for the new Data Science queries is rigorously defined in `statistical_queries.py` and consolidated into the `execute_dashboard_queries` service method for maximum efficiency.
+### Deployment (Render Cloud)
+The system is ready for Render via `render.yaml` and `Dockerfile`. It automatically manages the `build.sh` sequence for bundling the frontend and serving it through the FastAPI static mount.
