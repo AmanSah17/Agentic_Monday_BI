@@ -23,7 +23,32 @@ const INITIAL_REASONING_STEPS: ReasoningStep[] = loadingReasoningSteps().map((s)
 
 export default function App() {
   const sessionId = getOrCreateSessionId();
-  const [viewMode, setViewMode] = useState<ViewMode>('chat');
+  
+  // Resolve initial view from path
+  const getInitialView = (): ViewMode => {
+    const path = window.location.pathname.replace(/^\//, '');
+    if (['chat', 'dashboard', 'data-map', 'library', 'admin'].includes(path)) {
+      return path as ViewMode;
+    }
+    return 'chat';
+  };
+
+  const [viewMode, setViewMode] = useState<ViewMode>(getInitialView());
+  
+  // Handle popstate for back/forward navigation
+  React.useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname.replace(/^\//, '') || 'chat';
+      setViewMode(path as ViewMode);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const handleLinkClick = (mode: ViewMode) => {
+    window.history.pushState(null, '', `/${mode}`);
+    setViewMode(mode);
+  };
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'model',
@@ -81,10 +106,9 @@ export default function App() {
   return (
     <div className="min-h-screen bg-surface selection:bg-primary-container/30">
       <ThreeDScene />
-      <Sidebar currentView={viewMode} onViewChange={setViewMode} />
-      <TopBar />
-      
       <main className="ml-64 p-8 min-h-[calc(100vh-4rem)] relative z-10">
+        <Sidebar currentView={viewMode} onViewChange={handleLinkClick} />
+        <TopBar />
         {viewMode === 'chat' && (
           <div className="flex gap-8">
             <ChatInterface 

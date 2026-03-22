@@ -41,11 +41,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange }) =
 
       <nav className="flex-1 space-y-1">
         {navItems.map((item) => (
-          <button
+          <a
             key={item.view}
-            onClick={() => onViewChange(item.view)}
+            href={`/${item.view}`}
+            onClick={(e) => {
+              e.preventDefault();
+              onViewChange(item.view);
+            }}
             className={cn(
-              "w-full flex items-center gap-3 px-6 py-4 transition-all duration-300 group text-left",
+              "w-full flex items-center gap-3 px-6 py-4 transition-all duration-300 group text-left cursor-pointer",
               currentView === item.view
                 ? "border-l-2 border-primary-container text-white bg-gradient-to-r from-primary-container/10 to-transparent" 
                 : "text-outline hover:text-white hover:bg-white/5"
@@ -56,7 +60,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange }) =
             {currentView === item.view && (
               <ChevronRight className="ml-auto w-4 h-4 text-primary-container" />
             )}
-          </button>
+          </a>
         ))}
       </nav>
 

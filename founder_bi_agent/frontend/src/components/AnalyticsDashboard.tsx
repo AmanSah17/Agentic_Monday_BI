@@ -133,157 +133,244 @@ export const AnalyticsDashboard: React.FC = () => {
           draggableHandle=".drag-handle"
           isResizable={true}
         >
-          {/* 1. Client Pareto */}
+          {/* 1. Client Concentration */}
           <div key="a" className="bg-surface-container/90 rounded-2xl border border-outline-variant/20 shadow-xl flex flex-col overflow-hidden">
-            <div className="drag-handle cursor-grab active:cursor-grabbing bg-surface-container-high p-3 border-b border-outline-variant/10 font-bold text-on-surface text-sm">
-              1. Client Concentration (Pareto)
+            <div className="drag-handle cursor-grab active:cursor-grabbing bg-surface-container-high p-3 border-b border-outline-variant/10 font-bold text-on-surface text-sm flex justify-between items-center">
+              <span>1. Client Concentration (Pareto)</span>
+              <span className="text-[10px] opacity-40 font-normal">Top Revenue Drivers</span>
             </div>
-            <div className="flex-1 p-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={analytics.clientConcentration || []} dataKey="total_pipeline_value" nameKey="client_name" cx="50%" cy="50%" innerRadius="40%" outerRadius="80%">
-                    {(analytics.clientConcentration || []).map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                  </Pie>
-                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }} itemStyle={{ color: '#fff' }} formatter={(v: number) => `₹${(v/1e6).toFixed(2)}M`} />
-                </PieChart>
-              </ResponsiveContainer>
+            <div className="flex-1 p-4 flex flex-col gap-3">
+              <div className="flex-1">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={analytics.clientConcentration || []}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="total_pipeline_value"
+                      nameKey="client_name"
+                    >
+                      {(analytics.clientConcentration || []).map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={{ backgroundColor: '#1e1e2d', border: 'none', borderRadius: '8px' }} formatter={(v: number) => `₹${(v/1e6).toFixed(2)}M`} />
+                    <Legend wrapperStyle={{ fontSize: '10px' }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="text-[11px] text-outline p-2 bg-white/5 rounded leading-relaxed">
+                <strong>Logic:</strong> Identifies your most valuable account relationships. 
+                <ul className="list-disc ml-4 opacity-80">
+                   <li>Monitors portfolio risk (over-reliance on single clients).</li>
+                   <li>Prioritizes high-value pipeline opportunities.</li>
+                </ul>
+              </div>
             </div>
           </div>
 
-          {/* 2. Volume vs Fulfillment */}
+          {/* 2. Operational Volume vs Fulfillment */}
           <div key="b" className="bg-surface-container/90 rounded-2xl border border-outline-variant/20 shadow-xl flex flex-col overflow-hidden">
-            <div className="drag-handle cursor-grab active:cursor-grabbing bg-surface-container-high p-3 border-b border-outline-variant/10 font-bold text-on-surface text-sm">
-              2. Operational Volume vs Billed
+            <div className="drag-handle cursor-grab active:cursor-grabbing bg-surface-container-high p-3 border-b border-outline-variant/10 font-bold text-on-surface text-sm flex justify-between items-center">
+              <span>2. Volume vs Fulfillment</span>
+              <span className="text-[10px] opacity-40 font-normal">Operational Conversion</span>
             </div>
-            <div className="flex-1 p-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={analytics.volumeFulfillment || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2a2a3a" />
-                  <XAxis dataKey="sector" tick={{ fontSize: 10, fill: '#888' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: '#888' }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ backgroundColor: '#1e1e2d', border: 'none', borderRadius: '8px' }} />
-                  <Bar dataKey="ops_quantity" name="Ops Qty" fill="#3a3a5a" radius={[4, 4, 0, 0]} />
-                  <Line type="monotone" dataKey="billed_quantity" name="Billed Qty" stroke="#ffcb05" strokeWidth={3} dot={{ r: 3 }} />
-                </ComposedChart>
-              </ResponsiveContainer>
+            <div className="flex-1 p-4 flex flex-col gap-3">
+              <div className="flex-1">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={analytics.volumeFulfillment || []}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                    <XAxis dataKey="sector" tick={{ fontSize: 10, fill: '#888' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: '#888' }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{ backgroundColor: '#1e1e2d', border: 'none', borderRadius: '8px' }} />
+                    <Legend wrapperStyle={{ fontSize: '10px' }} />
+                    <Bar dataKey="ops_quantity" name="Ops Qty" fill="#6161ff" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="billed_quantity" name="Billed Qty" fill="#00d4ff" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="text-[11px] text-outline p-2 bg-white/5 rounded leading-relaxed">
+                <strong>Logic:</strong> Measures the "last mile" of project delivery.
+                <ul className="list-disc ml-4 opacity-80">
+                   <li>Gap between Blue and Aqua bars highlights unbilled efforts.</li>
+                   <li>Sector-wise distribution of operational workload.</li>
+                </ul>
+              </div>
             </div>
           </div>
 
-          {/* 3. Deal Size Distribution */}
+          {/* 3. Avg Deal Size by Nature */}
           <div key="c" className="bg-surface-container/90 rounded-2xl border border-outline-variant/20 shadow-xl flex flex-col overflow-hidden">
-            <div className="drag-handle cursor-grab active:cursor-grabbing bg-surface-container-high p-3 border-b border-outline-variant/10 font-bold text-on-surface text-sm">
-              3. Avg Deal Size by Nature
+            <div className="drag-handle cursor-grab active:cursor-grabbing bg-surface-container-high p-3 border-b border-outline-variant/10 font-bold text-on-surface text-sm flex justify-between items-center">
+              <span>3. Deal Size by Nature</span>
+              <span className="text-[10px] opacity-40 font-normal">Pricing Intelligence</span>
             </div>
-            <div className="flex-1 p-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={analytics.dealSizeDistribution || []} layout="vertical" margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#2a2a3a" />
-                  <XAxis type="number" hide />
-                  <YAxis dataKey="product_type" type="category" width={80} tick={{ fontSize: 10, fill: '#888' }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ backgroundColor: '#1e1e2d', border: 'none', borderRadius: '8px' }} formatter={(v: number) => `₹${(v/1e6).toFixed(2)}M`} />
-                  <Bar dataKey="avg_deal_size" name="Avg Deal Size" fill="#9b59b6" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="flex-1 p-4 flex flex-col gap-3">
+              <div className="flex-1">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart layout="vertical" data={analytics.dealSizeDistribution || []}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} vertical={false} stroke="rgba(255,255,255,0.05)" />
+                    <XAxis type="number" hide />
+                    <YAxis dataKey="product_type" type="category" width={70} tick={{ fontSize: 9, fill: '#888' }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{ backgroundColor: '#1e1e2d', border: 'none', borderRadius: '8px' }} formatter={(v: number) => `₹${(v/1e6).toFixed(2)}M`} />
+                    <Bar dataKey="avg_deal_size" name="Avg Size" fill="#9b59b6" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="text-[11px] text-outline p-2 bg-white/5 rounded leading-relaxed">
+                <strong>Logic:</strong> Segments pipeline value by product/nature of work.
+                <ul className="list-disc ml-4 opacity-80">
+                   <li>Identifies which "Nature of Work" yields the largest deal sizes.</li>
+                   <li>Helps in strategic resource allocation toward big-ticket items.</li>
+                </ul>
+              </div>
             </div>
           </div>
 
           {/* 4. Revenue Leakage Waterfall */}
           <div key="d" className="bg-surface-container/90 rounded-2xl border border-outline-variant/20 shadow-xl flex flex-col overflow-hidden">
-            <div className="drag-handle cursor-grab active:cursor-grabbing bg-surface-container-high p-3 border-b border-outline-variant/10 font-bold text-on-surface text-sm">
-              4. Revenue Leakage Analysis (Quoted vs Billed vs Collected)
+            <div className="drag-handle cursor-grab active:cursor-grabbing bg-surface-container-high p-3 border-b border-outline-variant/10 font-bold text-on-surface text-sm flex justify-between items-center">
+              <span>4. Revenue Leakage Analysis</span>
+              <span className="text-[10px] opacity-40 font-normal">Quoted vs Billed vs Collected</span>
             </div>
-            <div className="flex-1 p-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={analytics.revenueLeakage || []}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2a2a3a" />
-                  <XAxis dataKey="sector" tick={{ fontSize: 11, fill: '#888' }} axisLine={false} tickLine={false} />
-                  <YAxis tickFormatter={(v) => `₹${(v/1e6).toFixed(0)}M`} tick={{ fontSize: 11, fill: '#888' }} axisLine={false} tickLine={false} width={70} />
-                  <Tooltip contentStyle={{ backgroundColor: '#1e1e2e', border: 'none', borderRadius: '8px' }} formatter={(v: number) => `₹${(v/1e6).toFixed(2)}M`} />
-                  <Legend wrapperStyle={{ fontSize: '12px' }} />
-                  <Bar dataKey="quoted_value" name="Quoted Value" fill="#3a3a5a" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="billed_value" name="Billed Excl Leakage" fill="#6161ff" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="collected_value" name="Actually Collected" fill="#4ecdc4" radius={[4, 4, 0, 0]} />
-                  <Line type="monotone" dataKey="unbilled_leakage" name="Unbilled Leakage" stroke="#ff6b6b" strokeWidth={2} dot={{ r: 4 }} />
-                </ComposedChart>
-              </ResponsiveContainer>
+            <div className="flex-1 p-4 flex flex-col gap-3">
+              <div className="flex-1">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={analytics.revenueLeakage || []}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                    <XAxis dataKey="sector" tick={{ fontSize: 10, fill: '#888' }} axisLine={false} tickLine={false} />
+                    <YAxis tickFormatter={(v) => `₹${(v/1e6).toFixed(0)}M`} tick={{ fontSize: 10, fill: '#888' }} axisLine={false} tickLine={false} width={50} />
+                    <Tooltip contentStyle={{ backgroundColor: '#1e1e2d', border: 'none', borderRadius: '8px', color: '#fff' }} formatter={(v: number) => `₹${(v/1e6).toFixed(2)}M`} />
+                    <Legend wrapperStyle={{ fontSize: '10px' }} />
+                    <Bar dataKey="quoted_value" name="Quoted" fill="#3a3a5a" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="billed_value" name="Billed" fill="#6161ff" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="collected_value" name="Collected" fill="#4ecdc4" radius={[4, 4, 0, 0]} />
+                    <Line type="monotone" dataKey="unbilled_leakage" name="Unbilled Leak" stroke="#ff6b6b" strokeWidth={2} dot={{ r: 3 }} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="text-[11px] text-outline p-2 bg-white/5 rounded leading-relaxed">
+                <strong>Logic:</strong> Tracks financial conversion from Quote to Collection. 
+                <ul className="list-disc ml-4 opacity-80">
+                   <li>Identifies sectors where billing lags behind work (Unbilled Leakage).</li>
+                   <li>Reveals cash flow bottlenecks in the collection cycle.</li>
+                </ul>
+              </div>
             </div>
           </div>
 
-          {/* 5. Execution Velocity */}
+          {/* 5. Execution Velocity & Deals Status (FIXED) */}
           <div key="e" className="bg-surface-container/90 rounded-2xl border border-outline-variant/20 shadow-xl flex flex-col overflow-hidden">
-            <div className="drag-handle cursor-grab active:cursor-grabbing bg-surface-container-high p-3 border-b border-outline-variant/10 font-bold text-on-surface text-sm">
-              5. Execution Velocity (Bottlenecks)
+            <div className="drag-handle cursor-grab active:cursor-grabbing bg-surface-container-high p-3 border-b border-outline-variant/10 font-bold text-on-surface text-sm flex justify-between items-center">
+              <span>5. Operations & Deals Matrix</span>
+              <span className="text-[10px] opacity-40 font-normal">Horizontal Througput</span>
             </div>
-            <div className="flex-1 p-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={analytics.executionVelocity || []} margin={{ left: -20, bottom: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                  <XAxis 
-                    dataKey="execution_status" 
-                    stroke="rgba(255,255,255,0.5)" 
-                    fontSize={10} 
-                    tickLine={false} 
-                    axisLine={false}
-                    interval={0}
-                    angle={-45}
-                    textAnchor="end"
-                    height={60}
-                  />
-                  <YAxis stroke="rgba(255,255,255,0.5)" fontSize={10} tickLine={false} axisLine={false} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#1e1e2d', border: 'none', borderRadius: '8px', color: '#fff' }}
-                    itemStyle={{ color: '#fff' }}
-                  />
-                  <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
-                  <Bar dataKey="project_count" name="Volume" fill="#6161ff" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="avg_days_to_bill" name="Avg Velocity (Days)" fill="#e67e22" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="flex-1 p-4 flex flex-col gap-3 min-h-0">
+               <div className="flex-1 min-h-[150px] overflow-y-auto">
+                <ResponsiveContainer width="100%" height={Math.max(300, (analytics.executionVelocity?.length || 0) * 35)}>
+                  <BarChart 
+                    layout="vertical"
+                    data={analytics.executionVelocity || []} 
+                    margin={{ left: 80, right: 20, top: 10, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(255,255,255,0.05)" />
+                    <XAxis type="number" stroke="rgba(255,255,255,0.5)" fontSize={10} tickLine={false} axisLine={false} hide />
+                    <YAxis 
+                      type="category"
+                      dataKey="execution_status" 
+                      stroke="rgba(255,255,255,0.5)" 
+                      fontSize={9} 
+                      tickLine={false} 
+                      axisLine={false}
+                      width={80}
+                    />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#1e1e2d', border: 'none', borderRadius: '8px', color: '#fff' }}
+                      itemStyle={{ color: '#fff' }}
+                    />
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: '10px' }} />
+                    <Bar dataKey="project_count" name="Volume" fill="#6161ff" radius={[0, 4, 4, 0]} barSize={12} />
+                    <Bar dataKey="avg_days_to_bill" name="Avg Days" fill="#e67e22" radius={[0, 4, 4, 0]} barSize={12} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="text-[11px] text-outline p-2 bg-white/5 rounded leading-relaxed">
+                <strong>Logic:</strong> A unified view of sales (Deals) and production (Work Orders).
+                <ul className="list-disc ml-4 opacity-80">
+                   <li><strong>Horizontal Layout</strong>: Accommodates 25+ detailed status categories.</li>
+                   <li>Exposes bottlenecks where items accumulate (high Volume) or stall (high Avg Days).</li>
+                </ul>
+              </div>
             </div>
           </div>
 
-          {/* 6. Predictive Pipeline (Safe BarChart) */}
+          {/* 6. Predictive Pipeline */}
           <div key="f" className="bg-surface-container/90 rounded-2xl border border-outline-variant/20 shadow-xl flex flex-col overflow-hidden">
-            <div className="drag-handle cursor-grab active:cursor-grabbing bg-surface-container-high p-3 border-b border-outline-variant/10 font-bold text-on-surface text-sm">
-              6. Predictive Pipeline (Status vs Size)
+            <div className="drag-handle cursor-grab active:cursor-grabbing bg-surface-container-high p-3 border-b border-outline-variant/10 font-bold text-on-surface text-sm flex justify-between items-center">
+              <span>6. Predictive Pipeline</span>
+              <span className="text-[10px] opacity-40 font-normal">Revenue Forecasting</span>
             </div>
-            <div className="flex-1 p-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={analytics.predictivePipeline || []} margin={{ left: 10, bottom: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2a2a3a" />
-                  <XAxis dataKey="deal_status" tick={{ fontSize: 11, fill: '#888' }} angle={-15} textAnchor="end" />
-                  <YAxis tickFormatter={(v) => `₹${(v/1e6).toFixed(0)}M`} tick={{ fontSize: 11, fill: '#888' }} width={60} />
-                  <Tooltip cursor={{ fill: '#2a2a3a' }} contentStyle={{ backgroundColor: '#1e1e2d', border: 'none', borderRadius: '8px' }} formatter={(v: number) => `₹${(v/1e6).toFixed(2)}M`} />
-                  <Bar dataKey="pipeline_revenue" name="Pipeline Revenue" fill="#ffcb05" radius={[4, 4, 0, 0]}>
-                    {(analytics.predictivePipeline || []).map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[(index+5) % COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="flex-1 p-4 flex flex-col gap-3">
+              <div className="flex-1">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={analytics.predictivePipeline || []} margin={{ left: 10, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                    <XAxis dataKey="deal_status" tick={{ fontSize: 10, fill: '#888' }} angle={-15} textAnchor="end" height={40} />
+                    <YAxis tickFormatter={(v) => `₹${(v/1e6).toFixed(0)}M`} tick={{ fontSize: 10, fill: '#888' }} width={50} />
+                    <Tooltip cursor={{ fill: '#2a2a3a' }} contentStyle={{ backgroundColor: '#1e1e2d', border: 'none', borderRadius: '8px' }} formatter={(v: number) => `₹${(v/1e6).toFixed(2)}M`} />
+                    <Bar dataKey="pipeline_revenue" name="Pipeline Revenue" fill="#ffcb05" radius={[4, 4, 0, 0]}>
+                      {(analytics.predictivePipeline || []).map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[(index+5) % COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="text-[11px] text-outline p-2 bg-white/5 rounded leading-relaxed">
+                <strong>Logic:</strong> Projected revenue across Sales Stages.
+                <ul className="list-disc ml-4 opacity-80">
+                   <li>Distinguishes between Won revenue and Probable pipeline.</li>
+                   <li>Essential for mid-term financial planning and risk assessment.</li>
+                </ul>
+              </div>
             </div>
           </div>
 
-          {/* 7. Owner Performance (Safe ComposedChart) */}
+          {/* 7. Owner Performance Matrix */}
           <div key="g" className="bg-surface-container/90 rounded-2xl border border-outline-variant/20 shadow-xl flex flex-col overflow-hidden">
-            <div className="drag-handle cursor-grab active:cursor-grabbing bg-surface-container-high p-3 border-b border-outline-variant/10 font-bold text-on-surface text-sm">
-              7. Owner Performance Matrix
+            <div className="drag-handle cursor-grab active:cursor-grabbing bg-surface-container-high p-3 border-b border-outline-variant/10 font-bold text-on-surface text-sm flex justify-between items-center">
+              <span>7. Leaderboard</span>
+              <span className="text-[10px] opacity-40 font-normal">Individual Efficiency</span>
             </div>
-            <div className="flex-1 p-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={analytics.ownerPerformance || []} layout="vertical" margin={{ left: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#2a2a3a" />
-                  <XAxis type="number" hide />
-                  <YAxis dataKey="owner_name" type="category" tick={{ fontSize: 11, fill: '#888' }} axisLine={false} tickLine={false} width={80} />
-                  <Tooltip cursor={{ fill: '#2a2a3a' }} contentStyle={{ backgroundColor: '#1e1e2d', border: 'none', borderRadius: '8px' }} formatter={(v: number) => `₹${(v/1e6).toFixed(2)}M`} />
-                  <Legend />
-                  <Bar dataKey="pipeline_value" name="Active Pipeline (₹)" fill="#45b7d1" radius={[0, 4, 4, 0]} />
-                  <Line type="monotone" dataKey="win_probability_num" name="Win Probability %" stroke="#f1c40f" strokeWidth={3} dot={{ r: 4 }} />
-                </ComposedChart>
-              </ResponsiveContainer>
+            <div className="flex-1 p-4 flex flex-col gap-3">
+              <div className="flex-1">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart layout="vertical" data={analytics.ownerPerformance || []}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} vertical={false} stroke="rgba(255,255,255,0.05)" />
+                    <XAxis type="number" hide />
+                    <YAxis dataKey="owner_name" type="category" width={80} tick={{ fontSize: 9, fill: '#888' }} axisLine={false} tickLine={false} />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#1e1e2d', border: 'none', borderRadius: '8px', color: '#fff' }}
+                      formatter={(v: any, name: string) => name.toLowerCase().includes('win') ? `${v}%` : `₹${(Number(v)/1e6).toFixed(2)}M`}
+                    />
+                    <Legend wrapperStyle={{ fontSize: '10px' }} />
+                    <Bar dataKey="pipeline_value" name="Active Pipeline (₹)" fill="#00d4ff" radius={[0, 4, 4, 0]} />
+                    <Line type="monotone" dataKey="win_probability_num" name="Win Probability %" stroke="#ffcb05" strokeWidth={2} dot={{ r: 4 }} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="text-[11px] text-outline p-2 bg-white/5 rounded leading-relaxed">
+                <strong>Logic:</strong> Individual sales performance tracking.
+                <ul className="list-disc ml-4 opacity-80">
+                   <li>Correlates deal volume (Bars) with closing confidence (Line).</li>
+                   <li>Identifies top-tier closers and mentorship opportunities.</li>
+                </ul>
+              </div>
             </div>
           </div>
-
         </ResponsiveGridLayout>
       </div>
     </div>
