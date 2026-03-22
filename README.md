@@ -59,12 +59,18 @@ Seven deep-dive analytical modules providing high-resolution visibility into ope
    ```
 
 ### Production (Render.com)
-The project is pre-configured for a unified Docker deployment via `render.yaml`.
-- **Dockerized:** The `Dockerfile` handles the multi-stage build (React compile + Python environment).
-- **Environment Variables:**
-  - `LLM_PROVIDER`: huggingface / groq
-  - `MONDAY_COM_API_KEY`: Your Monday.com developer token
-  - `MONDAY_MODE`: `monday` (to use live API)
+The project is optimized for Render's **Blueprint** deployment using the `render.yaml` and `build.sh` configuration.
+
+#### Step-by-Step Deployment:
+1.  **Push to GitHub:** Ensure your latest changes are in the `main` branch.
+2.  **New Blueprint:** In the Render Dashboard, click **New +** and select **Blueprint**.
+3.  **Connect Repo:** Select your `Agentic_Monday_BI` repository.
+4.  **Configure Hooks:** Render will automatically detect `render.yaml`.
+5.  **Environment Variables:** You will be prompted to enter the following secret keys:
+    *   `MONDAY_COM_API_KEY`: Your Monday.com developer token.
+    *   `LLM_PROVIDER`: Set to `google` or `huggingface`.
+    *   `GOOGLE_API_KEY` / `HUGGINGFACE_API_KEY`: Based on your provider choice.
+6.  **Deploy:** Click **Apply**. Render will trigger `build.sh` to install dependencies and compile the React frontend before starting the FastAPI server.
 
 ---
 
