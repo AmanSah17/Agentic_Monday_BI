@@ -1,9 +1,10 @@
 services:
-  # Singular Consolidated Service (Hosts FastAPI Engine + Serves React Native Payload natively!)
+  # Singular Consolidated Service (Hosts FastAPI Engine + Serves React Assets natively!)
   - type: web
     name: founder-bi-unified
-    env: docker
-    dockerfilePath: ./Dockerfile
+    env: python
+    buildCommand: ./build.sh
+    startCommand: python -m uvicorn founder_bi_agent.backend.api:app --host 0.0.0.0 --port ${PORT:-8000}
     plan: starter
     envVars:
       - key: LLM_PROVIDER

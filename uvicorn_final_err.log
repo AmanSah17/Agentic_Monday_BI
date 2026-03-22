@@ -6,3 +6,44 @@ INFO:     Application startup complete.
 INFO:     Uvicorn running on http://127.0.0.1:8010 (Press CTRL+C to quit)
 F:\PyTorch_GPU\torch_gpu\lib\site-packages\chromadb\api\collection_configuration.py:327: DeprecationWarning: legacy embedding function config: 'GoogleEmbeddingFunction' object has no attribute 'is_legacy'
   return json.dumps(create_collection_configuration_to_json(config, metadata))
+F:\PyTorch_GPU\torch_gpu\lib\site-packages\chromadb\api\collection_configuration.py:327: DeprecationWarning: legacy embedding function config: 'GoogleEmbeddingFunction' object has no attribute 'is_legacy'
+  return json.dumps(create_collection_configuration_to_json(config, metadata))
+2026-03-22 05:09:31,343 | ERROR | founder_bi_api | get_dashboard_all.error: monday HTTP error 503: {'raw_response': 'upstream connect error or disconnect/reset before headers. reset reason: connection timeout'}
+Traceback (most recent call last):
+  File "F:\PyTorch_GPU\Agentic_Monday_BI\founder_bi_agent\backend\api.py", line 242, in get_dashboard_all
+    results = svc.execute_dashboard_queries(queries)
+  File "F:\PyTorch_GPU\Agentic_Monday_BI\founder_bi_agent\backend\service.py", line 104, in execute_dashboard_queries
+    tables = client.fetch_relevant_tables()
+  File "F:\PyTorch_GPU\Agentic_Monday_BI\founder_bi_agent\backend\mcp\monday_live.py", line 40, in fetch_relevant_tables
+    schemas = self.get_board_schemas()
+  File "F:\PyTorch_GPU\Agentic_Monday_BI\founder_bi_agent\backend\mcp\monday_live.py", line 31, in get_board_schemas
+    return self._graphql_list_boards()
+  File "F:\PyTorch_GPU\Agentic_Monday_BI\founder_bi_agent\backend\mcp\monday_live.py", line 114, in _graphql_list_boards
+    data = self._graphql_post(query=query, variables={"limit": limit, "page": page})
+  File "F:\PyTorch_GPU\Agentic_Monday_BI\founder_bi_agent\backend\mcp\monday_live.py", line 86, in _graphql_post
+    raise RuntimeError(
+RuntimeError: monday HTTP error 503: {'raw_response': 'upstream connect error or disconnect/reset before headers. reset reason: connection timeout'}
+F:\PyTorch_GPU\torch_gpu\lib\site-packages\chromadb\api\collection_configuration.py:327: DeprecationWarning: legacy embedding function config: 'GoogleEmbeddingFunction' object has no attribute 'is_legacy'
+  return json.dumps(create_collection_configuration_to_json(config, metadata))
+F:\PyTorch_GPU\torch_gpu\lib\site-packages\chromadb\api\collection_configuration.py:327: DeprecationWarning: legacy embedding function config: 'GoogleEmbeddingFunction' object has no attribute 'is_legacy'
+  return json.dumps(create_collection_configuration_to_json(config, metadata))
+F:\PyTorch_GPU\torch_gpu\lib\site-packages\chromadb\api\collection_configuration.py:327: DeprecationWarning: legacy embedding function config: 'GoogleEmbeddingFunction' object has no attribute 'is_legacy'
+  return json.dumps(create_collection_configuration_to_json(config, metadata))
+F:\PyTorch_GPU\torch_gpu\lib\site-packages\chromadb\api\collection_configuration.py:327: DeprecationWarning: legacy embedding function config: 'GoogleEmbeddingFunction' object has no attribute 'is_legacy'
+  return json.dumps(create_collection_configuration_to_json(config, metadata))
+F:\PyTorch_GPU\torch_gpu\lib\site-packages\chromadb\api\collection_configuration.py:327: DeprecationWarning: legacy embedding function config: 'GoogleEmbeddingFunction' object has no attribute 'is_legacy'
+  return json.dumps(create_collection_configuration_to_json(config, metadata))
+F:\PyTorch_GPU\torch_gpu\lib\site-packages\chromadb\api\collection_configuration.py:327: DeprecationWarning: legacy embedding function config: 'GoogleEmbeddingFunction' object has no attribute 'is_legacy'
+  return json.dumps(create_collection_configuration_to_json(config, metadata))
+F:\PyTorch_GPU\torch_gpu\lib\site-packages\chromadb\api\collection_configuration.py:327: DeprecationWarning: legacy embedding function config: 'GoogleEmbeddingFunction' object has no attribute 'is_legacy'
+  return json.dumps(create_collection_configuration_to_json(config, metadata))
+F:\PyTorch_GPU\torch_gpu\lib\site-packages\chromadb\api\collection_configuration.py:327: DeprecationWarning: legacy embedding function config: 'GoogleEmbeddingFunction' object has no attribute 'is_legacy'
+  return json.dumps(create_collection_configuration_to_json(config, metadata))
+F:\PyTorch_GPU\torch_gpu\lib\site-packages\chromadb\api\collection_configuration.py:327: DeprecationWarning: legacy embedding function config: 'GoogleEmbeddingFunction' object has no attribute 'is_legacy'
+  return json.dumps(create_collection_configuration_to_json(config, metadata))
+F:\PyTorch_GPU\torch_gpu\lib\site-packages\chromadb\api\collection_configuration.py:327: DeprecationWarning: legacy embedding function config: 'GoogleEmbeddingFunction' object has no attribute 'is_legacy'
+  return json.dumps(create_collection_configuration_to_json(config, metadata))
+F:\PyTorch_GPU\torch_gpu\lib\site-packages\chromadb\api\collection_configuration.py:327: DeprecationWarning: legacy embedding function config: 'GoogleEmbeddingFunction' object has no attribute 'is_legacy'
+  return json.dumps(create_collection_configuration_to_json(config, metadata))
+F:\PyTorch_GPU\torch_gpu\lib\site-packages\chromadb\api\collection_configuration.py:327: DeprecationWarning: legacy embedding function config: 'GoogleEmbeddingFunction' object has no attribute 'is_legacy'
+  return json.dumps(create_collection_configuration_to_json(config, metadata))
