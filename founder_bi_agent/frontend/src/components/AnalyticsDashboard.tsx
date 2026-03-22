@@ -217,11 +217,26 @@ export const AnalyticsDashboard: React.FC = () => {
             <div className="flex-1 p-4">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={analytics.executionVelocity || []} margin={{ left: -20, bottom: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2a2a3a" />
-                  <XAxis dataKey="execution_status" tick={{ fontSize: 10, fill: '#888' }} angle={-25} textAnchor="end" axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: '#888' }} axisLine={false} tickLine={false} />
-                  <Tooltip cursor={{ fill: '#2a2a3a' }} contentStyle={{ backgroundColor: '#1e1e2d', borderRadius: '8px', border: '1px solid #e67e22' }} />
-                  <Bar dataKey="avg_days_to_bill" name="Avg Days to Bill" fill="#e67e22" radius={[4, 4, 0, 0]} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                  <XAxis 
+                    dataKey="execution_status" 
+                    stroke="rgba(255,255,255,0.5)" 
+                    fontSize={10} 
+                    tickLine={false} 
+                    axisLine={false}
+                    interval={0}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis stroke="rgba(255,255,255,0.5)" fontSize={10} tickLine={false} axisLine={false} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#1e1e2d', border: 'none', borderRadius: '8px', color: '#fff' }}
+                    itemStyle={{ color: '#fff' }}
+                  />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
+                  <Bar dataKey="project_count" name="Volume" fill="#6161ff" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="avg_days_to_bill" name="Avg Velocity (Days)" fill="#e67e22" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

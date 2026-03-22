@@ -349,18 +349,36 @@ def get_execution_velocity() -> str:
     Execution Velocity Analysis (Probable vs Actual Dates).
     """
     return """
-    SELECT
-      COALESCE(execution_status, 'Unknown') AS execution_status,
-      COUNT(*) AS project_count,
-      ROUND(AVG(
-        DATEDIFF('day', TRY_CAST(probable_start_date AS DATE), TRY_CAST(actual_billing_month AS DATE))
-      ), 1) AS avg_days_to_bill
-    FROM work_orders
-    WHERE probable_start_date IS NOT NULL AND actual_billing_month IS NOT NULL
-      AND TRY_CAST(probable_start_date AS DATE) IS NOT NULL
-      AND TRY_CAST(actual_billing_month AS DATE) IS NOT NULL
-    GROUP BY 1
-    ORDER BY project_count DESC
+    WITH wo_stats AS (
+      SELECT
+        COALESCE(execution_status, 'Unknown') AS status,
+        'Work Order' as type,
+        COUNT(*) AS volume,
+        AVG(CASE 
+          WHEN TRY_CAST(probable_start_date AS DATE) IS NOT NULL 
+           AND TRY_CAST(actual_billing_month AS DATE) IS NOT NULL
+          THEN DATEDIFF('day', TRY_CAST(probable_start_date AS DATE), TRY_CAST(actual_billing_month AS DATE))
+          ELSE NULL 
+        END) AS avg_days_to_bill
+      FROM work_orders
+      GROUP BY 1, 2
+    ),
+    deal_stats AS (
+      SELECT
+        COALESCE(deal_stage, 'Unknown') AS status,
+        'Deal' as type,
+        COUNT(*) AS volume,
+        NULL::DOUBLE AS avg_days_to_bill
+      FROM deals
+      GROUP BY 1, 2
+    )
+    SELECT 
+      status as execution_status,
+      type,
+      volume as project_count,
+      ROUND(COALESCE(avg_days_to_bill, 0), 1) as avg_days_to_bill
+    FROM (SELECT * FROM wo_stats UNION ALL SELECT * FROM deal_stats)
+    ORDER BY volume DESC
     """
 
 def get_predictive_pipeline() -> str:
