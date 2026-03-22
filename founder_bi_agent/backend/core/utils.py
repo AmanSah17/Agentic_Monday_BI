@@ -20,7 +20,8 @@ def sanitize_for_json(value: Any) -> Any:
     if isinstance(value, pd.Timestamp):
         return None if pd.isna(value) else value.isoformat()
 
-    if isinstance(value, np.generic):
+    # Pandas nullable types/numpy types can be tricky
+    if hasattr(value, "item") and callable(getattr(value, "item")):
         return sanitize_for_json(value.item())
 
     if isinstance(value, dict):
@@ -34,5 +35,14 @@ def sanitize_for_json(value: Any) -> Any:
             return None
     except Exception:
         pass
+
+    # Final attempt to ensure numeric safety for Recharts
+    if isinstance(value, (float, np.floating)):
+        if math.isnan(value) or math.isinf(value):
+            return 0.0 # Force 0 for charts
+        return float(value)
+    
+    if isinstance(value, (int, np.integer)):
+        return int(value)
 
     return str(value)

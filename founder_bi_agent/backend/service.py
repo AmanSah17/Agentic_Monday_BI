@@ -107,10 +107,18 @@ class FounderBIService:
         
         results = {}
         from founder_bi_agent.backend.core.utils import sanitize_for_json
+        import logging
+        logger = logging.getLogger("founder_bi_service")
+        
         for key, sql in queries.items():
-            df = db.query(sql)
-            # Optimize to dict and serialize nulls cleanly
-            results[key] = [sanitize_for_json(row.to_dict()) for _, row in df.iterrows()]
+            try:
+                df = db.query(sql)
+                # Optimize to dict and serialize nulls cleanly
+                results[key] = [sanitize_for_json(row.to_dict()) for _, row in df.iterrows()]
+                logger.info("execute_dashboard_queries: key=%s rows=%d", key, len(results[key]))
+            except Exception as e:
+                logger.error("execute_dashboard_queries: FAILED key=%s error=%s", key, str(e))
+                results[key] = []
         return results
 
 

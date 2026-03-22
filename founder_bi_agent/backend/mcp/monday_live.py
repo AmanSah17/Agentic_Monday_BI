@@ -57,9 +57,9 @@ class MondayLiveClient:
         tables: dict[str, pd.DataFrame] = {}
         for board in selected:
             board_id = int(board["id"])
-            board_name = str(board["name"])
+            board_name = str(board["name"]).strip().lower()
             rows = self.get_board_items(board_id=board_id, limit_per_page=200)
-            table_name = "deals" if board_name == self.settings.monday_deals_board_name else "work_orders"
+            table_name = "deals" if board_name == self.settings.monday_deals_board_name.strip().lower() else "work_orders"
             tables[table_name] = pd.DataFrame(rows)
         return tables
 
