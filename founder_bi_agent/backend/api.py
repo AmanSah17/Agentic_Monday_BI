@@ -9,6 +9,9 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
 import numpy as np
 import pandas as pd
 from pydantic import BaseModel, Field
@@ -592,3 +595,20 @@ def get_deal_size_distribution_endpoint() -> PipelineDataResponse:
     except Exception as exc:
         logger.exception("get_deal_size_distribution.error: %s", str(exc))
         return PipelineDataResponse(data=[], error=str(exc))
+
+# --- Static File Serving for React Frontend ---
+frontend_path = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
+
+if os.path.exists(frontend_path):
+    # Mount assets folder for JS/CSS
+    assets_path = os.path.join(frontend_path, "assets")
+    if os.path.exists(assets_path):
+        app.mount("/assets", StaticFiles(directory=assets_path), name="assets")
+    
+    # Catch-all route to serve index.html for SPA routing
+    @app.get("/{full_path:path}")
+    async def serve_react_app(full_path: str):
+        # Exclude API routes from catch-all if needed, 
+        # but since this is defined LAST, FastAPI's order of operations 
+        # will prioritize the specific API routes above.
+        return FileResponse(os.path.join(frontend_path, "index.html"))
