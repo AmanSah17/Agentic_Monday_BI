@@ -59,18 +59,21 @@ Seven deep-dive analytical modules providing high-resolution visibility into ope
    ```
 
 ### Production (Render.com)
-The project is optimized for Render's **Blueprint** deployment using the `render.yaml` and `build.sh` configuration.
+The project is optimized for Render's **Blueprint** deployment using a **Containerized** approach (`render.yaml` + `Dockerfile` + `build.sh`).
 
 #### Step-by-Step Deployment:
 1.  **Push to GitHub:** Ensure your latest changes are in the `main` branch.
 2.  **New Blueprint:** In the Render Dashboard, click **New +** and select **Blueprint**.
 3.  **Connect Repo:** Select your `Agentic_Monday_BI` repository.
-4.  **Configure Hooks:** Render will automatically detect `render.yaml`.
-5.  **Environment Variables:** You will be prompted to enter the following secret keys:
+4.  **Automatic Detection:** Render will identify `render.yaml` and the `Dockerfile`.
+5.  **Environment Variables:** You will be prompted to enter your secret keys:
     *   `MONDAY_COM_API_KEY`: Your Monday.com developer token.
     *   `LLM_PROVIDER`: Set to `google` or `huggingface`.
-    *   `GOOGLE_API_KEY` / `HUGGINGFACE_API_KEY`: Based on your provider choice.
-6.  **Deploy:** Click **Apply**. Render will trigger `build.sh` to install dependencies and compile the React frontend before starting the FastAPI server.
+    *   `GOOGLE_API_KEY` / `HUGGINGFACE_API_KEY`: Based on your choice.
+    *   `TAVILY_API_KEY`: For search capabilities.
+6.  **Deploy:** Click **Apply**. 
+
+Render will now build the Docker image, execute the `build.sh` inside the container, and launch your V2 Dashboard as a standard Web Service.
 
 ---
 
