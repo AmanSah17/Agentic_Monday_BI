@@ -7,7 +7,7 @@ echo ">>> LLM_PROVIDER detected: ${LLM_PROVIDER:-google}"
 echo ">>> Installing Python Backend Dependencies..."
 pip install -r requirements.txt
 
-if [ "${LLM_PROVIDER}" == "google" ]; then
+if [ "${LLM_PROVIDER}" == "google" ] || [ "${LLM_PROVIDER}" == "gemini" ]; then
   echo ">>> [CONFIG] Prioritizing Google Gemini libraries..."
   pip install --upgrade google-generativeai langchain-google-genai
 elif [ "${LLM_PROVIDER}" == "huggingface" ] || [ "${LLM_PROVIDER}" == "groq" ]; then
