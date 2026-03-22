@@ -106,11 +106,11 @@ class FounderBIService:
         db.register_tables(tables)
         
         results = {}
-        from founder_bi_agent.backend.api import _sanitize_for_json
+        from founder_bi_agent.backend.core.utils import sanitize_for_json
         for key, sql in queries.items():
             df = db.query(sql)
             # Optimize to dict and serialize nulls cleanly
-            results[key] = [_sanitize_for_json(row.to_dict()) for _, row in df.iterrows()]
+            results[key] = [sanitize_for_json(row.to_dict()) for _, row in df.iterrows()]
         return results
 
 
