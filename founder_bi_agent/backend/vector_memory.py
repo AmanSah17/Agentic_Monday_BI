@@ -11,8 +11,9 @@ from founder_bi_agent.backend.config import AgentSettings
 class VectorMemoryStore:
     def __init__(self, settings: AgentSettings):
         self.settings = settings
-        self.db_path = str(Path(__file__).resolve().parent.parent / "artifacts" / "chroma_db")
-        os.makedirs(self.db_path, exist_ok=True)
+        # Use a writable directory (In Render, /tmp is always writable)
+        self.db_path = os.getenv("CHROMA_DB_PATH", "artifacts/chroma_db")
+        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         
         # Initialize Google GenAI Client (V1 SDK)
         self.genai_client = genai.Client(api_key=self.settings.google_api_key)
