@@ -7,7 +7,7 @@ import pandas as pd
 
 from concurrent.futures import ThreadPoolExecutor
 
-from founder_bi_agent.backend.config import AgentSettings
+from founder_bi_agent.backend.core.config import AgentSettings
 from founder_bi_agent.backend.llm.google_gemini import GeminiSQLPlanner, GeminiFoundationClient
 from founder_bi_agent.backend.llm.qwen_sql import QwenSQLPlanner
 from founder_bi_agent.backend.llm.vllm_openai import VLLMSQLPlanner

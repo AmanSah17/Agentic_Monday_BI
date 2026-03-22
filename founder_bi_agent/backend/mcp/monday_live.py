@@ -8,7 +8,7 @@ import pandas as pd
 import requests
 from fastmcp import Client
 
-from founder_bi_agent.backend.config import AgentSettings
+from founder_bi_agent.backend.core.config import AgentSettings
 
 
 class MondayLiveClient:

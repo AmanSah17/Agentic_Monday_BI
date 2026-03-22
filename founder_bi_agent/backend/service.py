@@ -7,7 +7,7 @@ from typing import Any
 import pandas as pd
 from dotenv import load_dotenv
 
-from founder_bi_agent.backend.config import AgentSettings
+from founder_bi_agent.backend.core.config import AgentSettings
 from founder_bi_agent.backend.graph.workflow import build_graph
 from founder_bi_agent.backend.sql.duckdb_engine import DuckDBSession
 from founder_bi_agent.backend.tools.monday_bi_tools import MondayBITools

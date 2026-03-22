@@ -18,7 +18,7 @@ export default defineConfig(() => {
         '/api': {
           target: backendTarget,
           changeOrigin: true,
-          rewrite: (p) => p.replace(/^\/api/, ''),
+          // Removed rewrite: backend now handles /api prefix directly
         },
       },
     },

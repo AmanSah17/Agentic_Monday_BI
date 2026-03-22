@@ -1,6 +1,6 @@
 import requests
 from typing import Any
-from founder_bi_agent.backend.config import AgentSettings
+from founder_bi_agent.backend.core.config import AgentSettings
 
 class WebResearchTools:
     def __init__(self, settings: AgentSettings):

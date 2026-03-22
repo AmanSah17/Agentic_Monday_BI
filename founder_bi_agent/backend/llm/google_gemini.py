@@ -1,7 +1,7 @@
 from google import genai
 from typing import Any
 
-from founder_bi_agent.backend.config import AgentSettings
+from founder_bi_agent.backend.core.config import AgentSettings
 from founder_bi_agent.backend.llm.fallback_insight import generate_insight_from_data
 
 

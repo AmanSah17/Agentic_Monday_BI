@@ -4,7 +4,7 @@ from typing import Any
 
 from langgraph.graph import END, START, StateGraph
 
-from founder_bi_agent.backend.config import AgentSettings
+from founder_bi_agent.backend.core.config import AgentSettings
 from founder_bi_agent.backend.graph.nodes import FounderBINodes
 from founder_bi_agent.backend.graph.state import BIState
 

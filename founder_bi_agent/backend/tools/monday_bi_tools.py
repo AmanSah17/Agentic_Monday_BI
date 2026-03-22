@@ -6,7 +6,7 @@ from typing import Any
 
 import pandas as pd
 
-from founder_bi_agent.backend.config import AgentSettings
+from founder_bi_agent.backend.core.config import AgentSettings
 from founder_bi_agent.backend.mcp.monday_live import MondayLiveClient
 
 

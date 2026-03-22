@@ -4,6 +4,8 @@ services:
     name: founder-bi-unified
     env: docker
     dockerfilePath: ./Dockerfile
+    buildCommand: ./build.sh
+    startCommand: python -m uvicorn founder_bi_agent.backend.main:app --host 0.0.0.0 --port ${PORT:-8000}
     plan: starter
     envVars:
       - key: LLM_PROVIDER

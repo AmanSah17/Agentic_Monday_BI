@@ -18,8 +18,16 @@ fi
 echo ">>> Building React Frontend..."
 cd founder_bi_agent/frontend
 
-# Render natively includes recent Node versions alongside Python
+# Install node dependencies
 npm install
+
+# Build the frontend assets
 npm run build
 
-echo ">>> Build Complete!"
+# Robustness check: Ensure dist exists and contains index.html
+if [ ! -f "dist/index.html" ]; then
+    echo "ERROR: Frontend build failed to produce dist/index.html"
+    exit 1
+fi
+
+echo ">>> Build Complete! Robustness checks passed."

@@ -7,7 +7,7 @@ import pandas as pd
 from pydantic import BaseModel, Field
 from langchain_core.messages import SystemMessage, HumanMessage
 
-from founder_bi_agent.backend.config import AgentSettings
+from founder_bi_agent.backend.core.config import AgentSettings
 from founder_bi_agent.backend.sql.sql_planner import build_schema_hint, generate_sql_heuristic
 from founder_bi_agent.backend.llm.sql_prompt_context import SYSTEM_PROMPT_SQL_GENERATION, create_validation_hint
 from founder_bi_agent.backend.llm.foundation_prompts import (

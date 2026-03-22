@@ -47,3 +47,13 @@ F:\PyTorch_GPU\torch_gpu\lib\site-packages\chromadb\api\collection_configuration
   return json.dumps(create_collection_configuration_to_json(config, metadata))
 F:\PyTorch_GPU\torch_gpu\lib\site-packages\chromadb\api\collection_configuration.py:327: DeprecationWarning: legacy embedding function config: 'GoogleEmbeddingFunction' object has no attribute 'is_legacy'
   return json.dumps(create_collection_configuration_to_json(config, metadata))
+F:\PyTorch_GPU\torch_gpu\lib\site-packages\chromadb\api\collection_configuration.py:327: DeprecationWarning: legacy embedding function config: 'GoogleEmbeddingFunction' object has no attribute 'is_legacy'
+  return json.dumps(create_collection_configuration_to_json(config, metadata))
+Exception in callback _ProactorBasePipeTransport._call_connection_lost(None)
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost(None)>
+Traceback (most recent call last):
+  File "C:\Users\amans\AppData\Local\Programs\Python\Python310\lib\asyncio\events.py", line 80, in _run
+    self._context.run(self._callback, *self._args)
+  File "C:\Users\amans\AppData\Local\Programs\Python\Python310\lib\asyncio\proactor_events.py", line 162, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host

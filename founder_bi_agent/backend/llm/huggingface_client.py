@@ -1,6 +1,6 @@
 from typing import Tuple, Any
 from openai import OpenAI
-from founder_bi_agent.backend.config import AgentSettings
+from founder_bi_agent.backend.core.config import AgentSettings
 
 class HuggingFaceClient:
     """

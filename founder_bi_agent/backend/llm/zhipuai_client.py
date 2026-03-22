@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from founder_bi_agent.backend.config import AgentSettings
+from founder_bi_agent.backend.core.config import AgentSettings
 
 
 class GLMFoundationClient:

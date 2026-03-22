@@ -19,4 +19,4 @@ RUN chmod +x build.sh
 RUN ./build.sh
 
 # Render implicitly passes the PORT variable, we map FastAPI directly to it
-CMD python -m uvicorn founder_bi_agent.backend.api:app --host 0.0.0.0 --port ${PORT:-8000}
+CMD python -m uvicorn founder_bi_agent.backend.main:app --host 0.0.0.0 --port ${PORT:-8000}

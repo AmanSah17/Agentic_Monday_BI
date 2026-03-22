@@ -62,7 +62,7 @@ export const AnalyticsDashboard: React.FC = () => {
     const fetchAnalytics = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`http://localhost:8010/analytics/dashboard-all`);
+        const response = await fetch(`/api/analytics/dashboard-all`);
         if (!response.ok) {
           throw new Error('Failed to fetch dashboard data');
         }

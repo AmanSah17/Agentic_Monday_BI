@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from founder_bi_agent.backend.config import AgentSettings
+from founder_bi_agent.backend.core.config import AgentSettings
 
 
 class VLLMSQLPlanner:
