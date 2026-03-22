@@ -36,6 +36,12 @@ class AgentSettings:
     monday_work_orders_board_name: str
     monday_deals_board_id: int | None
     monday_work_orders_board_id: int | None
+    
+    # Database and Redis settings
+    postgres_url: str | None
+    postgres_password: str | None
+    redis_host: str
+    redis_port: int
 
     @classmethod
     def from_env(cls) -> "AgentSettings":
@@ -115,4 +121,8 @@ class AgentSettings:
                 if os.getenv("MONDAY_WORK_ORDERS_BOARD_ID")
                 else None
             ),
+            postgres_url=os.getenv("POSTGRES_URL", "postgresql://postgres:Amansah%401717@localhost:5432/agentic_bi"),
+            postgres_password=os.getenv("POSTGRES_PASSWORD", "Amansah@1717"),
+            redis_host=os.getenv("REDIS_HOST", "localhost"),
+            redis_port=int(os.getenv("REDIS_PORT", "6379")),
         )

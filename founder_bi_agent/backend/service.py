@@ -23,11 +23,17 @@ def setup_env(settings: AgentSettings) -> None:
 
 
 class FounderBIService:
-    def __init__(self) -> None:
-        self._load_env_files()
-        self.settings = AgentSettings.from_env()
+    def __init__(self, settings: AgentSettings | None = None) -> None:
+        if settings:
+            self.settings = settings
+        else:
+            self._load_env_files()
+            self.settings = AgentSettings.from_env()
+        
         setup_env(self.settings)
         self.app = build_graph(self.settings)
+        from founder_bi_agent.backend.history_store import ConversationHistoryStore
+        self.history = ConversationHistoryStore(self.settings)
 
     @staticmethod
     def _load_env_files() -> None:

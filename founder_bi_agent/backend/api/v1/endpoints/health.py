@@ -1,9 +1,10 @@
 from fastapi import APIRouter
 from founder_bi_agent.backend.models.schemas import HealthResponse
-from founder_bi_agent.backend.history_store import ConversationHistoryStore
+from founder_bi_agent.backend.service import FounderBIService
 
 router = APIRouter()
-history_store = ConversationHistoryStore()
+service = FounderBIService()
+history_store = service.history
 
 @router.get("", response_model=HealthResponse)
 def health() -> HealthResponse:

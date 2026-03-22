@@ -56,17 +56,47 @@ The frontend is a high-performance React application optimized for "Executive Ov
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Deployment & Production
 
-### Local Development
-1. **Infrastructure**: Start the unified server on port `8010`.
+This system is optimized for **Render Cloud** using a unified Docker architecture.
+
+### 1. Production Architecture
+- **Web Service**: A Linux container running FastAPI which also serves the pre-bundled React frontend as static assets.
+- **Database**: Managed PostgreSQL (`agentic_bi_prod`) for persistent history and error tracking.
+- **Cache**: Managed Redis (`agentic_bi_cache`) for low-latency session memory.
+
+### 2. Deploying to Render
+1. **GitHub Connection**: Connect your repository to Render.
+2. **Blueprint Implementation**: Render will automatically detect the `render.yaml` file.
+3. **Environment Variables**: Ensure the following are set in the Render Dashboard:
+   - `GOOGLE_API_KEY`: Your Gemini Pro API key.
+   - `MONDAY_COM_API_KEY`: Your Monday.com API token.
+   - `TAVILY_API_KEY`: For real-time web research tools.
+   - *Optional*: `LANGSMITH_API_KEY`, `GROQ_API_KEY`, `SILICON_FLOW_API_KEY`.
+
+### 3. Local Development (Quick Start)
+1. **Backend**:
    ```bash
-   python -m uvicorn founder_bi_agent.backend.main:app --port 8010
+   python -m uvicorn founder_bi_agent.backend.main:app --port 8010 --reload
    ```
-2. **Frontend Debugging**: Start Vite on port `3001` (proxied to 8010).
+2. **Frontend**:
    ```bash
    cd founder_bi_agent/frontend && npm run dev
    ```
 
-### Deployment (Render Cloud)
-The system is ready for Render via `render.yaml` and `Dockerfile`. It automatically manages the `build.sh` sequence for bundling the frontend and serving it through the FastAPI static mount.
+---
+
+## 🛠 Tech Stack Detail
+
+- **Reasoning**: LangGraph (15-Node DAG)
+- **Database**: PostgreSQL + DuckDB (In-Memory Analytics)
+- **Memory**: Redis (Cache) + ChromaDB (Vector)
+- **Frontend**: React 18, Vite, Framer Motion (Node Animations)
+- **API**: FastAPI (Asynchronous WebSocket Streaming)
+
+---
+
+## 🔒 Security & Performance
+- **Connection Pooling**: PostgreSQL uses a managed pool for concurrent user support.
+- **Session Isolation**: Every user session is isolated via `thread_id` in LangGraph and `session_id` in the history store.
+- **Real-time Engine**: WebSocket streaming ensures sub-100ms UI updates for agent thought processes.

@@ -11,7 +11,8 @@ from founder_bi_agent.backend.core.utils import sanitize_for_json
 router = APIRouter()
 logger = logging.getLogger("founder_bi_chat")
 service = FounderBIService()
-history_store = ConversationHistoryStore()
+# Share the history store from the service
+history_store = service.history
 vector_store = VectorMemoryStore(service.settings)
 
 @router.get("/history/{session_id}")

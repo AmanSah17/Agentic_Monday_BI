@@ -1,7 +1,7 @@
 # Unified Production Dockerfile
 FROM python:3.10-slim
 
-# Install system dependencies & Node.js (required for build.sh)
+# Install system dependencies & Node.js
 RUN apt-get update && apt-get install -y \
     curl \
     gnupg \
@@ -11,12 +11,20 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Copy the entire project
+# Copy dependency files first for caching
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of the code
 COPY . .
 
-# Ensure build.sh is executable and run the standard build process
+# Run the build script to bundle frontend
 RUN chmod +x build.sh
 RUN ./build.sh
 
-# Render implicitly passes the PORT variable, we map FastAPI directly to it
-CMD python -m uvicorn founder_bi_agent.backend.main:app --host 0.0.0.0 --port ${PORT:-8000}
+# Environment variables for production
+ENV PORT=8000
+EXPOSE 8000
+
+# Start the unified server
+CMD ["python", "-m", "uvicorn", "founder_bi_agent.backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

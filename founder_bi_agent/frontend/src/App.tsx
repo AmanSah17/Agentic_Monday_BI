@@ -5,6 +5,8 @@ import { ChatInterface } from './components/ChatInterface';
 import { ReasoningTrace } from './components/ReasoningTrace';
 import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { ThreeDScene } from './components/ThreeDScene';
+import { NodeGraphVisualization, GraphNode, GraphEdge } from './components/NodeGraphVisualization';
+import { DataLineageVisualization, DataFlowNode, DataFlowEdge } from './components/DataLineageVisualization';
 import {
   getOrCreateSessionId,
   Message,
@@ -13,6 +15,7 @@ import {
   queryFounderBI,
   tracesToReasoningSteps,
 } from './services/ai';
+import { wsService } from './services/websocket';
 
 type ViewMode = 'chat' | 'dashboard' | 'data-map' | 'library' | 'admin';
 
@@ -59,47 +62,154 @@ export default function App() {
   ]);
   const [isTyping, setIsTyping] = useState(false);
   const [reasoningSteps, setReasoningSteps] = useState<ReasoningStep[]>(INITIAL_REASONING_STEPS);
+  
+  // Graph & Lineage State
+  const [graphNodes, setGraphNodes] = useState<GraphNode[]>([]);
+  const [graphEdges, setGraphEdges] = useState<GraphEdge[]>([]);
+  const [lineageNodes, setLineageNodes] = useState<DataFlowNode[]>([]);
+  const [lineageEdges, setLineageEdges] = useState<DataFlowEdge[]>([]);
+
+  // WebSocket event handling for real-time trace
+  React.useEffect(() => {
+    const unsubscribe = wsService.subscribe((event) => {
+      if (event.type === 'node_start') {
+        const nodeName = event.node_name || 'unknown';
+        
+        // Update Graph Nodes
+        setGraphNodes(prev => {
+          const existing = prev.find(n => n.id === nodeName);
+          if (existing) {
+            return prev.map(n => n.id === nodeName ? { ...n, status: 'running' } : n);
+          }
+          return [...prev, { id: nodeName, label: nodeName.toUpperCase(), status: 'running' }];
+        });
+
+        setReasoningSteps(prev => {
+          const title = nodeName.replace(/_/g, ' ').toUpperCase();
+          const existingIdx = prev.findIndex(s => s.title === title || s.title.includes(title));
+          
+          if (existingIdx !== -1) {
+            const next = [...prev];
+            next[existingIdx] = { ...next[existingIdx], status: 'active' };
+            return next;
+          }
+          
+          return [...prev, {
+            id: prev.length + 1,
+            title,
+            description: 'Analyzing data...',
+            status: 'active'
+          }];
+        });
+      }
+      
+      if (event.type === 'node_end') {
+        const nodeName = event.node_name || 'unknown';
+        const output = event.data?.output_data || {};
+        
+        // Update Graph Nodes
+        setGraphNodes(prev => prev.map(n => n.id === nodeName ? { 
+          ...n, 
+          status: 'completed',
+          executionTime: event.execution_time_ms 
+        } : n));
+
+        setReasoningSteps(prev => prev.map(s => {
+          const title = nodeName.replace(/_/g, ' ').toUpperCase();
+          if (s.title === title || s.title.includes(title)) {
+            return { 
+              ...s, 
+              status: 'completed',
+              description: `Completed in ${event.execution_time_ms?.toFixed(0) || '?'}ms`,
+              code: JSON.stringify(output, null, 2).slice(0, 500)
+            };
+          }
+          return s;
+        }));
+
+        // If it's the final insight, add message
+        if (nodeName === 'insight_writer' && output.answer) {
+          const modelMsg: Message = {
+            role: 'model',
+            content: output.answer,
+            timestamp: new Date(),
+            payload: output as any,
+          };
+          setMessages((prev) => [...prev, modelMsg]);
+          setIsTyping(false);
+        }
+      }
+
+      if (event.type === 'data_flow') {
+        // Update Lineage
+        const node_id = `data_${Date.now()}`;
+        setLineageNodes(prev => [...prev, {
+          id: node_id,
+          name: event.description || 'Data chunk',
+          dataType: 'data_table',
+          timestamp: event.timestamp
+        }]);
+        
+        if (event.from && event.to) {
+          setLineageEdges(prev => [...prev, {
+            id: `edge_${Date.now()}`,
+            from: event.from!,
+            to: event.to!,
+            dataCount: 1,
+            transformationType: 'data_flow'
+          }]);
+        }
+      }
+
+      if (event.type === 'execution_error') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: 'model',
+            content: `Execution failed: ${event.error}`,
+            timestamp: new Date(),
+          },
+        ]);
+        setIsTyping(false);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      wsService.disconnect();
+    };
+  }, []);
 
   const handleMessageSent = async (prompt: string) => {
     const userMsg: Message = { role: 'user', content: prompt, timestamp: new Date() };
     const nextMessages = [...messages, userMsg];
     setMessages(nextMessages);
     setIsTyping(true);
-    setReasoningSteps(loadingReasoningSteps());
+    setReasoningSteps(INITIAL_REASONING_STEPS);
+    setGraphNodes([]);
+    setGraphEdges([]);
+    setLineageNodes([]);
+    setLineageEdges([]);
 
     try {
+      await wsService.connect(sessionId);
       const history = nextMessages.map((m) => ({
         role: m.role === 'model' ? 'assistant' : 'user',
         content: m.content,
       }));
 
-      const response = await queryFounderBI(prompt, history, sessionId);
-      const traceSteps = tracesToReasoningSteps(response.traces || []);
-      setReasoningSteps(traceSteps.length ? traceSteps : INITIAL_REASONING_STEPS);
-
-      const modelText = response.needs_clarification
-        ? response.clarification_question || 'I need one clarification before proceeding.'
-        : response.answer || 'Analysis complete.';
-
-      const modelMsg: Message = {
-        role: 'model',
-        content: modelText,
-        timestamp: new Date(),
-        payload: response,
-      };
-      setMessages((prev) => [...prev, modelMsg]);
+      wsService.execute(prompt, history);
     } catch (error) {
-      console.error('Backend Error:', error);
+      console.error('WS Connection Error:', error);
+      setIsTyping(false);
       setMessages((prev) => [
         ...prev,
         {
           role: 'model',
-          content: `I encountered a backend processing error while running live tools. Please retry.\n\nError: ${error instanceof Error ? error.message : String(error)}`,
+          content: `Failed to connect to real-time engine: ${error instanceof Error ? error.message : String(error)}`,
           timestamp: new Date(),
         },
       ]);
-    } finally {
-      setIsTyping(false);
     }
   };
 
@@ -127,11 +237,17 @@ export default function App() {
         )}
         
         {viewMode === 'data-map' && (
-          <div className="flex items-center justify-center h-96">
-            <div className="text-center text-outline">
-              <h2 className="text-2xl font-bold text-white mb-2">Data Map</h2>
-              <p>Relationship mapping and schema visualization coming soon</p>
-            </div>
+          <div className="space-y-8">
+            <NodeGraphVisualization 
+              nodes={graphNodes} 
+              edges={graphEdges} 
+              isExecuting={isTyping}
+            />
+            <DataLineageVisualization 
+              nodes={lineageNodes} 
+              edges={lineageEdges} 
+              title="Execution Data Lineage"
+            />
           </div>
         )}
         

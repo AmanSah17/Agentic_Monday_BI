@@ -329,6 +329,10 @@ class FounderBINodes:
         result_df: pd.DataFrame = state.get("result_df", pd.DataFrame())
         quality_report = state.get("quality_report", {})
         question = str(state.get("question", "")).lower()
+        traces = state.get("traces", [])
+        
+        # Create a reasoning summary for the LLM to understand its own journey
+        reasoning_trail = "\n".join([f"- {t['node']}: {list(t['details'].keys())}" for t in traces])
         
         web_results = state.get("web_research_results", [])
         if web_results:
@@ -341,7 +345,7 @@ class FounderBINodes:
         summary = state.get("last_result_summary", "")
 
         answer = self.foundation_llm.write_insight(
-            question=f"{question}\n\n[DATA SUMMARY]:\n{summary}",
+            question=f"{question}\n\n[REASONING TRAIL]:\n{reasoning_trail}\n\n[DATA SUMMARY]:\n{summary}",
             result_df=result_df,
             quality_report=quality_report,
             table_schemas=table_schemas,

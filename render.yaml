@@ -1,5 +1,16 @@
+databases:
+  - name: agentic_bi_prod
+    user: postgres
+    plan: starter
+
 services:
-  # Singular Containerized Service (Hosts FastAPI Engine + Serves React Assets!)
+  # Redis Cache Service
+  - type: redis
+    name: agentic_bi_cache
+    plan: starter
+    ipAllowList: [] # Only allow internal connections
+
+  # Unified Web Service (FastAPI + React)
   - type: web
     name: founder-bi-unified
     env: docker
@@ -26,5 +37,19 @@ services:
         sync: false
       - key: TAVILY_API_KEY
         sync: false
+      - key: POSTGRES_URL
+        fromDatabase:
+          name: agentic_bi_prod
+          property: connectionString
+      - key: REDIS_HOST
+        fromService:
+          type: redis
+          name: agentic_bi_cache
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: redis
+          name: agentic_bi_cache
+          property: port
       - key: ALLOWED_ORIGINS
         value: "*"
