@@ -35,18 +35,25 @@ class ConversationHistoryStore:
         # Initialize PostgreSQL
         self.pg = PostgresManager(settings)
         
-        # Initialize Redis
+        # Initialize Redis with a quick socket check
+        import socket
         try:
+            # Quick check if port is open
+            with socket.create_connection((settings.redis_host, settings.redis_port), timeout=1.0):
+                pass
+            
             self.redis = redis.Redis(
                 host=settings.redis_host,
                 port=settings.redis_port,
-                decode_responses=True
+                decode_responses=True,
+                socket_timeout=2,
+                socket_connect_timeout=2
             )
             self.redis.ping()
             self.redis_available = True
             logger.info("Redis connected for history caching.")
         except Exception as e:
-            logger.warning(f"Redis not available, falling back to PG only: {e}")
+            logger.warning(f"Redis not available: {e}. Falling back to PG only.")
             self.redis_available = False
 
     def status(self) -> HistoryStoreStatus:
@@ -57,11 +64,14 @@ class ConversationHistoryStore:
             max_turns=self.max_turns,
         )
 
-    def get_history(self, session_id: str) -> list[dict[str, str]]:
+    def get_history(self, session_id: str, user_id: Optional[int] = None) -> list[dict[str, str]]:
         """Retrieve history from Redis (cache) or PostgreSQL (fallback)"""
         # 1. Try Redis
+        cache_key = f"hist:{session_id}"
+        if user_id:
+            cache_key = f"hist:{user_id}:{session_id}"
+            
         if self.redis_available:
-            cache_key = f"hist:{session_id}"
             cached = self.redis.get(cache_key)
             if cached:
                 return json.loads(cached)
@@ -70,22 +80,23 @@ class ConversationHistoryStore:
         conn = self.pg.get_connection()
         try:
             with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    SELECT role, content 
-                    FROM conversation_history 
-                    WHERE session_id = %s 
-                    ORDER BY timestamp ASC
-                    """,
-                    (session_id,)
-                )
+                query = "SELECT role, content FROM conversation_history WHERE session_id = %s"
+                params = [session_id]
+                
+                if user_id:
+                    query += " AND user_id = %s"
+                    params.append(user_id)
+                
+                query += " ORDER BY timestamp ASC"
+                
+                cur.execute(query, tuple(params))
                 rows = cur.fetchall()
                 turns = [{"role": r[0], "content": r[1]} for r in rows]
                 turns = turns[-self.max_turns:] if self.max_turns > 0 else turns
                 
                 # Update Redis cache if available
                 if self.redis_available:
-                    self.redis.setex(f"hist:{session_id}", self.ttl_seconds, json.dumps(turns))
+                    self.redis.setex(cache_key, self.ttl_seconds, json.dumps(turns))
                 
                 return turns
         except Exception as e:
@@ -94,10 +105,10 @@ class ConversationHistoryStore:
         finally:
             self.pg.release_connection(conn)
 
-    def append_turns(self, session_id: str, turns: list[dict[str, str]]) -> list[dict[str, str]]:
+    def append_turns(self, session_id: str, turns: list[dict[str, str]], user_id: Optional[int] = None) -> list[dict[str, str]]:
         sanitized = self._sanitize_turns(turns)
         if not sanitized:
-            return self.get_history(session_id)
+            return self.get_history(session_id, user_id)
 
         # 1. Persist to PostgreSQL
         conn = self.pg.get_connection()
@@ -106,10 +117,10 @@ class ConversationHistoryStore:
                 for turn in sanitized:
                     cur.execute(
                         """
-                        INSERT INTO conversation_history (session_id, role, content)
-                        VALUES (%s, %s, %s)
+                        INSERT INTO conversation_history (session_id, user_id, role, content)
+                        VALUES (%s, %s, %s, %s)
                         """,
-                        (session_id, turn["role"], turn["content"])
+                        (session_id, user_id, turn["role"], turn["content"])
                     )
                 conn.commit()
         except Exception as e:
@@ -118,22 +129,25 @@ class ConversationHistoryStore:
         finally:
             self.pg.release_connection(conn)
         
-        # 2. Invalidate/Update Redis cache
+        # 2. Invalidate Redis cache
         if self.redis_available:
-            self.redis.delete(f"hist:{session_id}")
+            cache_key = f"hist:{session_id}"
+            if user_id:
+                cache_key = f"hist:{user_id}:{session_id}"
+            self.redis.delete(cache_key)
             
-        return self.get_history(session_id)
+        return self.get_history(session_id, user_id)
 
-    def log_error(self, session_id: str, error_type: str, error_message: str, stack_trace: str = "") -> None:
+    def log_error(self, session_id: str, error_type: str, error_message: str, stack_trace: str = "", user_id: Optional[int] = None) -> None:
         conn = self.pg.get_connection()
         try:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    INSERT INTO error_logs (session_id, error_type, error_message, stack_trace)
-                    VALUES (%s, %s, %s, %s)
+                    INSERT INTO error_logs (session_id, user_id, error_type, error_message, stack_trace)
+                    VALUES (%s, %s, %s, %s, %s)
                     """,
-                    (session_id, str(error_type), str(error_message), str(stack_trace))
+                    (session_id, user_id, str(error_type), str(error_message), str(stack_trace))
                 )
                 conn.commit()
         except Exception as e:

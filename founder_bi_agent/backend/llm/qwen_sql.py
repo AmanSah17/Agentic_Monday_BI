@@ -31,6 +31,8 @@ class QwenSQLPlanner:
             api_key=getattr(self.settings, "qwen_api_key", "EMPTY") or "EMPTY",
             base_url=getattr(self.settings, "qwen_base_url", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
             temperature=0,
+            max_retries=1,
+            timeout=30,
         )
 
     def _get_client(self, model: str) -> Any:

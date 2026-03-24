@@ -5,7 +5,9 @@ import asyncio
 import websockets
 
 async def test_websocket():
-    uri = f"ws://localhost:8000/ws/execute/test-session-{int(asyncio.get_event_loop().time())}"
+    from founder_bi_agent.backend.core.auth import create_access_token
+    token = create_access_token(data={"sub": "test_user", "user_id": 1})
+    uri = f"ws://localhost:8010/ws/execute/test-session-{int(asyncio.get_event_loop().time())}?token={token}"
     
     print(f"🔌 Connecting to WebSocket: {uri}")
     print("=" * 70)

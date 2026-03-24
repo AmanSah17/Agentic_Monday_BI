@@ -79,24 +79,22 @@ async def ws_health() -> Dict[str, str]:
     """Health check for WebSocket module"""
     return {"status": "ok", "ws_module": "loaded"}
 
+from founder_bi_agent.backend.core.auth import decode_access_token
+
 @router.websocket("/execute/{session_id}")
-async def websocket_endpoint(session_id: str, websocket: WebSocket) -> None:
-    """
-    WebSocket endpoint for real-time graph execution
+async def websocket_endpoint(session_id: str, websocket: WebSocket, token: str = Query(None)) -> None:
+    # Verify token for WebSocket connection
+    user_payload = decode_access_token(token) if token else None
+    if not user_payload:
+        await websocket.accept()
+        await websocket.send_json({
+            "type": "auth_error",
+            "message": "Authentication required for real-time execution"
+        })
+        await websocket.close(code=4001)
+        return
     
-    Client can send:
-    {
-        "type": "execute",
-        "query": "user question",
-        "context": {...}
-    }
-    
-    Server emits:
-    {
-        "type": "node_start" | "node_end" | "node_error" | "data_flow" | "result",
-        "data": {...}
-    }
-    """
+    user_id = user_payload.get("user_id")
     await manager.connect(session_id, websocket)
 
     try:
@@ -106,8 +104,8 @@ async def websocket_endpoint(session_id: str, websocket: WebSocket) -> None:
             message_type = data.get("type", "")
 
             if message_type == "execute":
-                # Handle graph execution (async operation)
-                await handle_graph_execution(session_id, data, manager)
+                # Handle graph execution (async operation) passing user_id
+                await handle_graph_execution(session_id, data, manager, user_id=user_id)
 
             elif message_type == "ping":
                 # Health check
@@ -145,25 +143,25 @@ async def websocket_endpoint(session_id: str, websocket: WebSocket) -> None:
 async def handle_graph_execution(
     session_id: str, 
     data: Dict[str, Any],
-    connection_manager: WebSocketConnectionManager
+    connection_manager: WebSocketConnectionManager,
+    user_id: Optional[int] = None
 ) -> None:
     """
     Handle graph execution request via WebSocket.
-    Integrates with the existing LangGraph workflow and broadcasts
-    execution events to connected clients in real-time using astream_events.
     """
-    from founder_bi_agent.backend.service import FounderBIService
+    from founder_bi_agent.backend.api.v1.endpoints.chat import get_service
     import asyncio
-
+    
     query = data.get("query", "")
     context = data.get("context", {})
     history = data.get("conversation_history", [])
 
-    service = FounderBIService()
+    service = get_service()
     trace_logger = connection_manager.get_trace_logger(session_id)
 
     initial_state = {
         "session_id": session_id,
+        "user_id": user_id, # Link user_id to graph state
         "question": query,
         "conversation_history": history,
         "traces": [],
@@ -177,39 +175,48 @@ async def handle_graph_execution(
             "timestamp": datetime.utcnow().isoformat() + "Z"
         })
 
-        # Use astream_events (v2) for granular node-level events
-        async for event in service.app.astream_events(
-            initial_state, 
-            version="v2",
-            config={"configurable": {"thread_id": session_id}}
-        ):
-            kind = event["event"]
+        # Fallback to ainvoke if streaming is stuck or silent
+        try:
+            # First, try astream_events for real-time updates with a total timeout
+            async def run_streaming():
+                async for event in service.app.astream_events(
+                    initial_state, 
+                    version="v2",
+                    config={"configurable": {"thread_id": session_id}}
+                ):
+                    kind = event["event"]
+                    if kind == "on_node_start":
+                        node_name = event["name"]
+                        if node_name not in ["__start__", "__end__"]:
+                            await trace_logger.emit_node_start(node_name, input_data=event.get("data", {}).get("input"))
+                    elif kind == "on_node_end":
+                        node_name = event["name"]
+                        if node_name not in ["__start__", "__end__"]:
+                            await trace_logger.emit_node_end(node_name, output_data=event.get("data", {}).get("output"))
             
-            # Start of a node
-            if kind == "on_chain_start" and event["name"] == "LangGraph":
-                # Master chain start - can ignore or log
-                pass
-            
-            elif kind == "on_chat_model_stream":
-                # Optional: stream LLM tokens if needed
-                pass
-
-            elif kind == "on_node_start":
-                node_name = event["name"]
-                # Skip internal/start nodes if they are just overhead
-                if node_name not in ["__start__", "__end__"]:
-                    await trace_logger.emit_node_start(
-                        node_name, 
-                        input_data=event.get("data", {}).get("input")
-                    )
-
-            elif kind == "on_node_end":
-                node_name = event["name"]
-                if node_name not in ["__start__", "__end__"]:
-                    await trace_logger.emit_node_end(
-                        node_name, 
-                        output_data=event.get("data", {}).get("output")
-                    )
+            await asyncio.wait_for(run_streaming(), timeout=120)
+        except asyncio.TimeoutError:
+            logger.error(f"Graph execution timed out after 120s for session {session_id}")
+            await connection_manager.broadcast(session_id, {
+                "type": "node_error",
+                "node_name": "system",
+                "error": "Execution timed out (120s). Please try a simpler query or check connectivity."
+            })
+        except Exception as e:
+            logger.warning(f"Streaming failed, falling back to ainvoke: {e}")
+            try:
+                # Fallback ainvoke with 60s timeout
+                final_state = await asyncio.wait_for(
+                    service.app.ainvoke(
+                        initial_state, 
+                        config={"configurable": {"thread_id": session_id}}
+                    ),
+                    timeout=60
+                )
+                # Emit final node events manually for the UI
+                await trace_logger.emit_node_end("insight_writer", output_data=final_state)
+            except Exception as fe:
+                logger.error(f"Fallback ainvoke also failed: {fe}")
 
         # Notify client of completion
         await connection_manager.broadcast(session_id, {

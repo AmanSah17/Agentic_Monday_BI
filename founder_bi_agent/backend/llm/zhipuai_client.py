@@ -41,8 +41,8 @@ class GLMFoundationClient:
             api_key=api_key,
             base_url=base_url,
             temperature=0.1,
-            max_retries=2,
-            timeout=120,
+            max_retries=1,
+            timeout=45,
         )
 
     def route_intent(self, question: str) -> str:

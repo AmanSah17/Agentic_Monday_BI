@@ -48,6 +48,7 @@ class HuggingFaceClient:
                 messages=messages,
                 max_tokens=1024,
                 temperature=0.6,
+                timeout=30.0,
             )
             content = response.choices[0].message.content or ""
             

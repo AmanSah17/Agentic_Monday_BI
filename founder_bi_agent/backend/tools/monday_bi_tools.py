@@ -43,7 +43,14 @@ class MondayBITools:
         return boards
 
     def discover_bi_boards(self, boards: list[dict[str, Any]] | None = None) -> dict[str, BoardRef]:
-        boards = boards if boards is not None else self.list_boards()
+        deals_id = self.settings.monday_deals_board_id
+        wo_id = self.settings.monday_work_orders_board_id
+
+        if not boards and deals_id and wo_id:
+            # If we have IDs and no boards list, we can fetch just these two
+            boards = self.client.get_board_schemas(board_ids=[deals_id, wo_id])
+        elif not boards:
+            boards = self.list_boards()
 
         deals = self._resolve_board(
             boards,
@@ -78,7 +85,13 @@ class MondayBITools:
         board_name: str | None = None,
         boards: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
-        boards = boards if boards is not None else self.list_boards()
+        if boards is None:
+            if board_id is not None:
+                # Fetch just this one board
+                boards = self.client.get_board_schemas(board_ids=[int(board_id)])
+            else:
+                boards = self.list_boards()
+                
         for board in boards:
             if board_id is not None and int(board["id"]) == int(board_id):
                 return board

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Paperclip, Zap, Cpu, BarChart3, TrendingUp, Users, Clock, DollarSign, CheckCircle } from 'lucide-react';
+import { Paperclip, Zap, Cpu, BarChart3, TrendingUp, Users, Clock, DollarSign, CheckCircle, Activity } from 'lucide-react';
 import { Message } from '../services/ai';
 import { cn } from '../lib/utils';
 import confetti from 'canvas-confetti';
@@ -14,34 +14,34 @@ interface ChatInterfaceProps {
 
 const SUGGESTED_QUESTIONS = [
   {
-    text: "Deals by owner: who has the most value in pipeline?",
-    icon: Users,
-    category: "Sales Pipeline"
-  },
-  {
-    text: "What's the status breakdown of work orders by execution?",
-    icon: CheckCircle,
-    category: "Work Orders"
-  },
-  {
-    text: "Which sectors are generating the most revenue?",
+    text: "How's our pipeline looking for the energy sector this quarter?",
     icon: TrendingUp,
-    category: "Revenue Analysis"
+    category: "Strategic Overview"
   },
   {
-    text: "What's the deal-to-work-order conversion rate by stage?",
+    text: "Deals by owner: who has the most value in the current pipeline?",
+    icon: Users,
+    category: "Sales Performance"
+  },
+  {
+    text: "What's the status breakdown of all active work orders?",
+    icon: CheckCircle,
+    category: "Operations"
+  },
+  {
+    text: "Which sectors are generating the highest projected revenue?",
     icon: BarChart3,
-    category: "Conversion"
+    category: "Market Analysis"
+  },
+  {
+    text: "What is the billing and collection status of all deals?",
+    icon: DollarSign,
+    category: "Financial Health"
   },
   {
     text: "Which deals are closest to closing in the next 30 days?",
     icon: Clock,
-    category: "Pipeline Forecast"
-  },
-  {
-    text: "What's the billing and collection status of all work orders?",
-    icon: DollarSign,
-    category: "Financials"
+    category: "Forecasting"
   }
 ];
 
@@ -92,12 +92,59 @@ export const ChatInterface = ({ onMessageSent, messages, isTyping }: ChatInterfa
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, staggerChildren: 0.1 }}
-            className="flex flex-col gap-4 mt-12"
+            transition={{ duration: 0.6 }}
+            className="flex flex-col gap-8 mt-12 px-4"
           >
-            <div className="text-center mb-4">
-              <h3 className="text-lg font-bold text-white mb-2">Suggested Questions</h3>
-              <p className="text-xs text-outline">Click any question or type your own to get started</p>
+            <div className="bg-[#16161e] border border-white/10 rounded-2xl p-8 shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-16 -mt-16" />
+              
+              <div className="relative z-10">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="p-3 bg-primary/20 rounded-xl text-primary-container">
+                    <Activity className="w-6 h-6" />
+                  </div>
+                  <h2 className="text-2xl font-black text-white tracking-tight uppercase italic underline decoration-primary decoration-4 underline-offset-8">
+                    Monday Business Intelligence Agent
+                  </h2>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-4">
+                    <p className="text-sm text-slate-300 leading-relaxed">
+                      Founders and executives need quick, accurate answers to business questions across multiple data sources. 
+                    </p>
+                    <div className="p-4 bg-white/5 rounded-xl border-l-4 border-primary">
+                      <p className="text-xs text-slate-400 italic">
+                        "Build an AI agent that answers founder-level business intelligence queries by integrating with monday.com boards containing Work Orders and Deals data."
+                      </p>
+                    </div>
+                    <p className="text-xs text-slate-500 line-clamp-3">
+                      The Challenge: Business data is messy. A founder asks, "How's our pipeline looking for the energy sector this quarter?" Someone must interpret the query, find relevant data, clean it, and provide insights.
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex flex-col gap-2">
+                      <span className="text-[10px] font-black text-primary-container uppercase tracking-widest">Capabilities</span>
+                      <div className="flex flex-wrap gap-2">
+                        {['Real-time API', 'MCP Tools', 'LLM Integration', 'DAG Reasoning', 'Dynamic SQL', 'Insight Analysis'].map(tag => (
+                          <span key={tag} className="px-2 py-1 bg-white/5 border border-white/10 rounded-md text-[9px] text-slate-400 font-bold uppercase tracking-wider">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      This tool utilizes real-time API, MCP tools, and LLMs to process information through a Directed Acyclic Graph (DAG) - providing reasoning, action, and dynamic SQL query generation to provide users with meaningful insights.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="text-center">
+              <h3 className="text-sm font-black text-white uppercase tracking-[0.3em] mb-2">Select a Sample Query</h3>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest">Or type your complex business question below</p>
             </div>
             <motion.div
               className="grid grid-cols-1 md:grid-cols-2 gap-3"

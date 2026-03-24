@@ -43,7 +43,8 @@ class VLLMSQLPlanner:
             api_key=api_key,
             base_url=base_url,
             temperature=0,
-            timeout=120,
+            max_retries=1,
+            timeout=30,
         )
 
     def _get_client(self, model: str) -> Any:

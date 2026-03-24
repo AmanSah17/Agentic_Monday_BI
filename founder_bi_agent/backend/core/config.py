@@ -121,7 +121,7 @@ class AgentSettings:
                 if os.getenv("MONDAY_WORK_ORDERS_BOARD_ID")
                 else None
             ),
-            postgres_url=os.getenv("POSTGRES_URL", "postgresql://postgres:Amansah%401717@localhost:5432/agentic_bi"),
+            postgres_url=os.getenv("POSTGRES_URL", "postgresql://postgres:Amansah%401717@127.0.0.1:5432/agentic_bi"),
             postgres_password=os.getenv("POSTGRES_PASSWORD", "Amansah@1717"),
             redis_host=os.getenv("REDIS_HOST", "localhost"),
             redis_port=int(os.getenv("REDIS_PORT", "6379")),

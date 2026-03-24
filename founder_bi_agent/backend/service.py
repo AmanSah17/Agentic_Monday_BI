@@ -14,11 +14,7 @@ from founder_bi_agent.backend.tools.monday_bi_tools import MondayBITools
 
 
 def setup_env(settings: AgentSettings) -> None:
-    if settings.langsmith_api_key:
-        os.environ["LANGSMITH_API_KEY"] = settings.langsmith_api_key
-        os.environ["LANGSMITH_TRACING"] = "true" if settings.langsmith_tracing else "false"
-    else:
-        os.environ["LANGSMITH_TRACING"] = "false"
+    os.environ["LANGSMITH_TRACING"] = "false"
     os.environ["LANGSMITH_PROJECT"] = settings.langsmith_project
 
 

@@ -59,11 +59,14 @@ class GeminiSQLPlanner:
 
             for model in candidates:
                 try:
-                    # New SDK generate_content call
+                    # Disable internal SDK retries to fail fast to next candidate or fallback
                     response = self.client.models.generate_content(
                         model=model,
                         contents=prompt,
-                        config={"temperature": 0}
+                        config={
+                            "temperature": 0,
+                            "http_options": {"timeout": 15} # 15s timeout
+                        }
                     )
                     sql_text = response.text or ""
                     sql_text = str(sql_text).strip()
@@ -118,10 +121,10 @@ class GeminiFoundationClient:
 
     def _candidate_models(self) -> list[str]:
         ordered = [
-            getattr(self.settings, "llm_reasoning_model", "gemini-2.5-pro"),
+            getattr(self.settings, "llm_reasoning_model", "gemini-2.0-flash"),
             *getattr(self.settings, "llm_reasoning_model_variants", []),
+            "gemini-1.5-flash",
             "gemini-2.0-flash",
-            "gemini-2.5-pro",
         ]
         out: list[str] = []
         seen: set[str] = set()
@@ -138,8 +141,8 @@ class GeminiFoundationClient:
         ordered = [
             getattr(self.settings, "llm_insight_model", "gemini-2.0-flash"),
             *getattr(self.settings, "llm_insight_model_variants", []),
+            "gemini-1.5-flash",
             "gemini-2.0-flash",
-            "gemini-2.5-pro",
         ]
         out: list[str] = []
         seen: set[str] = set()
@@ -165,7 +168,10 @@ class GeminiFoundationClient:
                 response = self.client.models.generate_content(
                     model=model,
                     contents=prompt,
-                    config={"temperature": 0}
+                    config={
+                        "temperature": 0,
+                        "http_options": {"timeout": 10}
+                    }
                 )
                 intent = str(response.text or "").strip().lower()
                 if intent in {"pipeline_health", "general_bi"}:
@@ -203,7 +209,10 @@ class GeminiFoundationClient:
                 response = self.client.models.generate_content(
                     model=model,
                     contents=prompt,
-                    config={"temperature": 0.1}
+                    config={
+                        "temperature": 0.1,
+                        "http_options": {"timeout": 15}
+                    }
                 )
                 content = str(response.text or "").strip()
                 
@@ -260,7 +269,10 @@ class GeminiFoundationClient:
                 response = self.client.models.generate_content(
                     model=model,
                     contents=prompt,
-                    config={"temperature": 0.2}
+                    config={
+                        "temperature": 0.2,
+                        "http_options": {"timeout": 20}
+                    }
                 )
                 return str(response.text or "").strip()
             except Exception as e:
@@ -308,7 +320,10 @@ class GeminiFoundationClient:
                 response = self.client.models.generate_content(
                     model=model,
                     contents=prompt,
-                    config={"temperature": 0}
+                    config={
+                        "temperature": 0,
+                        "http_options": {"timeout": 20}
+                    }
                 )
                 content = str(response.text or "").strip()
                 

@@ -18,6 +18,7 @@ export interface WSEvent {
   timestamp: string;
   data?: any;
   error?: string;
+  message?: string;
   execution_time_ms?: number;
   from?: string;
   to?: string;
@@ -28,7 +29,7 @@ class WebSocketService {
   private socket: WebSocket | null = null;
   private handlers: Set<(event: WSEvent) => void> = new Set();
 
-  connect(sessionId: string): Promise<void> {
+  connect(sessionId: string, token: string): Promise<void> {
     return new Promise((resolve, reject) => {
       if (this.socket?.readyState === WebSocket.OPEN) {
         resolve();
@@ -37,7 +38,7 @@ class WebSocketService {
 
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const host = import.meta.env.VITE_BACKEND_WS_URL || window.location.host;
-      const url = `${protocol}//${host}/ws/execute/${sessionId}`;
+      const url = `${protocol}//${host}/ws/execute/${sessionId}?token=${token}`;
 
       this.socket = new WebSocket(url);
 

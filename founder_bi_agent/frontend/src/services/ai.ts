@@ -54,7 +54,8 @@ function apiBaseUrl() {
 export async function queryFounderBI(
   question: string,
   conversationHistory: Array<{ role: string; content: string }>,
-  sessionId: string
+  sessionId: string,
+  token?: string | null
 ): Promise<QueryResponsePayload> {
   const payload: QueryRequestPayload = {
     question,
@@ -66,6 +67,7 @@ export async function queryFounderBI(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { "Authorization": `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(payload),
   });

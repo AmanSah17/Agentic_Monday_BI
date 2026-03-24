@@ -34,13 +34,12 @@ def _append_trace(state: dict[str, Any], node: str, details: dict[str, Any]) -> 
     )
     return traces
 
-
 class FounderBINodes:
     def __init__(self, settings: AgentSettings):
         self.settings = settings
         self.monday_tools = MondayBITools(settings)
         self.web_tools = WebResearchTools(settings)
-        self.vector_store = VectorMemoryStore(settings)
+        self._vector_store = None
         
         if settings.llm_provider == "gemini":
             self.foundation_llm = GeminiFoundationClient(settings)
@@ -60,18 +59,54 @@ class FounderBINodes:
             self.foundation_llm = GLMFoundationClient(settings)
             self.sql_planner = None
 
+    @property
+    def vector_store(self):
+        if self._vector_store is None:
+            try:
+                from founder_bi_agent.backend.vector_memory import VectorMemoryStore
+                self._vector_store = VectorMemoryStore(self.settings)
+            except Exception as e:
+                import logging
+                logging.getLogger("founder_bi_nodes").error(f"Failed to init vector store: {e}")
+                self._vector_store = "FAILED"
+        return self._vector_store
+
     def memory_retriever(self, state: dict[str, Any]) -> dict[str, Any]:
         session_id = state.get("session_id", "default_session")
         question = state.get("question", "")
-        context = self.vector_store.get_relevant_context(session_id, question)
+        context = ""
+        import logging
+        logger = logging.getLogger("founder_bi_nodes")
+        logger.info(f"memory_retriever: session_id={session_id}")
+        vs = self.vector_store
+        if vs != "FAILED":
+            try:
+                # Add a timeout to vector retrieval
+                import threading
+                def fetch():
+                    nonlocal context
+                    context = vs.get_relevant_context(session_id, question)
+                
+                t = threading.Thread(target=fetch)
+                t.start()
+                t.join(timeout=10)
+                if t.is_alive():
+                    logger.warning("Vector retriever timed out")
+            except Exception as e:
+                logger.error(f"Vector retriever error: {e}")
+        
         return {
             "long_term_context": context,
             "traces": _append_trace(state, "memory_retriever", {"context_length": len(context)}),
         }
 
     def intent_router(self, state: dict[str, Any]) -> dict[str, Any]:
+        import logging
+        logger = logging.getLogger("founder_bi_nodes")
         question = state["question"]
+        logger.info(f"intent_router: question={question[:50]}...")
         intent = self.foundation_llm.route_intent(question)
+        logger.info(f"intent_router: result={intent}")
         return {
             "intent": intent,
             "traces": _append_trace(
@@ -97,58 +132,103 @@ class FounderBINodes:
         }
 
     def schema_discovery(self, state: dict[str, Any]) -> dict[str, Any]:
-        all_boards = self.monday_tools.list_boards()
-        board_map = self.monday_tools.discover_bi_boards(boards=all_boards)
-        deals_schema = self.monday_tools.get_board_schema(
-            board_id=board_map["deals"].board_id,
-            boards=all_boards,
-        )
-        work_orders_schema = self.monday_tools.get_board_schema(
-            board_id=board_map["work_orders"].board_id,
-            boards=all_boards,
-        )
-        board_schemas = [deals_schema, work_orders_schema]
-        tool_trace = self.monday_tools.pop_trace()
-        return {
-            "board_schemas": board_schemas,
-            "board_map": {
-                "deals": {
-                    "board_id": board_map["deals"].board_id,
-                    "board_name": board_map["deals"].board_name,
+        import logging
+        logger = logging.getLogger("founder_bi_nodes")
+        logger.info("schema_discovery: starting")
+        
+        try:
+            # discover_bi_boards will now use IDs from settings if available to skip listing all boards
+            board_map = self.monday_tools.discover_bi_boards()
+            
+            deals_id = board_map["deals"].board_id
+            work_orders_id = board_map["work_orders"].board_id
+            
+            # get_board_schema optimized to fetch specific board directly by ID
+            logger.info(f"schema_discovery: fetching schemas for {deals_id}, {work_orders_id}")
+            deals_schema = self.monday_tools.get_board_schema(board_id=deals_id)
+            work_orders_schema = self.monday_tools.get_board_schema(board_id=work_orders_id)
+            
+            board_schemas = [deals_schema, work_orders_schema]
+            logger.info("schema_discovery: completed")
+            tool_trace = self.monday_tools.pop_trace()
+            return {
+                "board_schemas": board_schemas,
+                "monday_down": False,
+                "board_map": {
+                    "deals": {
+                        "board_id": deals_id,
+                        "board_name": board_map["deals"].board_name,
+                    },
+                    "work_orders": {
+                        "board_id": work_orders_id,
+                        "board_name": board_map["work_orders"].board_name,
+                    },
                 },
-                "work_orders": {
-                    "board_id": board_map["work_orders"].board_id,
-                    "board_name": board_map["work_orders"].board_name,
-                },
-            },
-            "traces": _append_trace(
-                state,
-                "schema_discovery",
-                {
-                    "board_count": len(board_schemas),
-                    "strict_board_names": [
-                        self.settings.monday_deals_board_name,
-                        self.settings.monday_work_orders_board_name,
-                    ],
-                    "tool_trace": tool_trace,
-                },
-            ),
-        }
+                "traces": _append_trace(
+                    state,
+                    "schema_discovery",
+                    {
+                        "board_count": len(board_schemas),
+                        "strict_board_names": [
+                            self.settings.monday_deals_board_name,
+                            self.settings.monday_work_orders_board_name,
+                        ],
+                        "tool_trace": tool_trace,
+                    },
+                ),
+            }
+        except Exception as e:
+            logger.error(f"schema_discovery failed: {e}")
+            return {
+                "monday_down": True,
+                "monday_error": str(e),
+                "traces": _append_trace(state, "schema_discovery", {"error": str(e), "status": "down"}),
+            }
 
     def data_fetch_live(self, state: dict[str, Any]) -> dict[str, Any]:
+        import logging
+        logger = logging.getLogger("founder_bi_nodes")
+        
+        if state.get("monday_down"):
+            logger.warning("data_fetch_live: skipping due to monday_down flag")
+            return {
+                "raw_tables": {},
+                "traces": _append_trace(state, "data_fetch_live", {"status": "skipped_due_to_down_upstream"}),
+            }
+
         board_map: dict[str, Any] = state.get("board_map", {})
         board_schemas: list[dict[str, Any]] = state.get("board_schemas", [])
 
         deals_meta = board_map.get("deals") or {}
         work_orders_meta = board_map.get("work_orders") or {}
-        deals_board_id = int(deals_meta["board_id"])
-        work_orders_board_id = int(work_orders_meta["board_id"])
+        
+        try:
+            deals_board_id = int(deals_meta["board_id"])
+            work_orders_board_id = int(work_orders_meta["board_id"])
+        except (KeyError, ValueError, TypeError) as e:
+            logger.error(f"data_fetch_live: missing board IDs: {e}")
+            return {
+                "monday_down": True,
+                "monday_error": f"Internal mapping error: {e}",
+                "traces": _append_trace(state, "data_fetch_live", {"error": str(e), "status": "failed_mapping"}),
+            }
 
+        logger.info(f"data_fetch_live: fetching data for {deals_board_id}, {work_orders_board_id}")
         with ThreadPoolExecutor(max_workers=2) as executor:
             future_deals = executor.submit(self.monday_tools.fetch_board_table, deals_board_id)
             future_wo = executor.submit(self.monday_tools.fetch_board_table, work_orders_board_id)
-            deals_df = future_deals.result()
-            work_orders_df = future_wo.result()
+            try:
+                # Add a 45s timeout to prevent infinite hangs
+                deals_df = future_deals.result(timeout=45)
+                work_orders_df = future_wo.result(timeout=45)
+                logger.info(f"data_fetch_live: success. deals={len(deals_df)} rows, wo={len(work_orders_df)} rows")
+            except Exception as e:
+                logger.error(f"Data fetch timeout or error: {e}")
+                return {
+                    "monday_down": True,
+                    "monday_error": str(e),
+                    "traces": _append_trace(state, "data_fetch_live", {"error": str(e), "status": "timeout_or_error"}),
+                }
 
         deals_board_schema = next(
             (x for x in board_schemas if int(x.get("id", 0)) == deals_board_id),
@@ -247,6 +327,9 @@ class FounderBINodes:
         schema_hint = build_schema_hint(cleaned_tables)
         uses_generic_fallback = fallback_sql.strip().lower().startswith("select * from ")
 
+        import logging
+        logger = logging.getLogger("founder_bi_nodes")
+        logger.info(f"text2sql_planner: generating SQL. contextual_question='{contextual_question[:100]}'")
         if not uses_generic_fallback:
             sql_query = fallback_sql
             planner_meta = {
@@ -266,6 +349,7 @@ class FounderBINodes:
                 "provider": self.settings.llm_provider,
                 "mode": "fallback_no_planner_configured",
             }
+        logger.info(f"text2sql_planner: generated SQL='{sql_query[:100]}'")
         return {
             "sql_query": sql_query,
             "fallback_sql_query": fallback_sql,
@@ -326,6 +410,26 @@ class FounderBINodes:
         }
 
     def insight_writer(self, state: dict[str, Any]) -> dict[str, Any]:
+        import logging
+        logger = logging.getLogger("founder_bi_nodes")
+        
+        if state.get("monday_down"):
+            error_msg = state.get("monday_error", "Unknown error connecting to Monday.com")
+            logger.warning(f"insight_writer: generating error response due to monday_down. Error: {error_msg}")
+            
+            answer = (
+                "### ⚠️ Service Connection Issue\n\n"
+                "I'm currently having trouble connecting to your Monday.com boards. "
+                "This usually happens when the Monday.com API is under heavy load or maintenance.\n\n"
+                f"**Technical Details**: {error_msg}\n\n"
+                "**Recommended Action**: Please wait a few minutes and try your query again. "
+                "The system has automatic retry logic, so it may resolve itself shortly."
+            )
+            return {
+                "answer": answer,
+                "traces": _append_trace(state, "insight_writer", {"status": "error_response_generated", "error": error_msg}),
+            }
+
         result_df: pd.DataFrame = state.get("result_df", pd.DataFrame())
         quality_report = state.get("quality_report", {})
         question = str(state.get("question", "")).lower()
@@ -344,6 +448,7 @@ class FounderBINodes:
         sql_execution_error = state.get("sql_execution_error")
         summary = state.get("last_result_summary", "")
 
+        logger.info(f"insight_writer: writing insight for question='{question[:100]}'")
         answer = self.foundation_llm.write_insight(
             question=f"{question}\n\n[REASONING TRAIL]:\n{reasoning_trail}\n\n[DATA SUMMARY]:\n{summary}",
             result_df=result_df,
@@ -351,6 +456,7 @@ class FounderBINodes:
             table_schemas=table_schemas,
             sql_execution_error=sql_execution_error,
         )
+        logger.info("insight_writer: completed")
 
         return {
             "answer": answer,

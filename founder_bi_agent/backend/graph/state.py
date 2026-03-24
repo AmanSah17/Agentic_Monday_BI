@@ -7,6 +7,7 @@ import pandas as pd
 
 class BIState(TypedDict, total=False):
     session_id: str
+    user_id: int | str
     question: str
     conversation_history: list[dict[str, str]]
     long_term_context: str
@@ -31,4 +32,6 @@ class BIState(TypedDict, total=False):
     answer: str
     chart_spec: dict[str, Any]
     web_research_results: list[dict[str, Any]]
+    monday_down: bool
+    monday_error: str
     traces: list[dict[str, Any]]

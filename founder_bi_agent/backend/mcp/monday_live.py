@@ -24,7 +24,10 @@ class MondayLiveClient:
         if self.mode not in {"graphql", "mcp"}:
             raise ValueError("MONDAY_MODE must be either 'graphql' or 'mcp'.")
 
-    def get_board_schemas(self) -> list[dict[str, Any]]:
+    def get_board_schemas(self, board_ids: list[int] | None = None) -> list[dict[str, Any]]:
+        if board_ids:
+            return self._graphql_get_specific_boards(board_ids)
+            
         if self.mode == "mcp":
             payload = self._mcp_list_boards()
             return self._normalize_board_schema_payload(payload)
@@ -37,14 +40,25 @@ class MondayLiveClient:
         return self._graphql_get_board_items(board_id=board_id, limit_per_page=limit_per_page)
 
     def fetch_relevant_tables(self) -> dict[str, pd.DataFrame]:
-        schemas = self.get_board_schemas()
+        deals_id = self.settings.monday_deals_board_id
+        wo_id = self.settings.monday_work_orders_board_id
+        
+        if deals_id and wo_id:
+            schemas = self.get_board_schemas(board_ids=[deals_id, wo_id])
+        else:
+            schemas = self.get_board_schemas()
+            
         selected: list[dict[str, Any]] = []
         for board in schemas:
             board_name = str(board.get("name", "")).strip().lower()
-            if board_name in {
-                self.settings.monday_deals_board_name.strip().lower(),
-                self.settings.monday_work_orders_board_name.strip().lower(),
-            }:
+            board_id = int(board.get("id", 0))
+            
+            is_deals = (deals_id and board_id == deals_id) or \
+                       (board_name == self.settings.monday_deals_board_name.strip().lower())
+            is_wo = (wo_id and board_id == wo_id) or \
+                    (board_name == self.settings.monday_work_orders_board_name.strip().lower())
+            
+            if is_deals or is_wo:
                 selected.append(board)
 
         if len(selected) != 2:
@@ -67,30 +81,79 @@ class MondayLiveClient:
         if not self.settings.monday_api_token:
             raise RuntimeError("MONDAY_API_TOKEN is required for graphql mode.")
 
-        response = requests.post(
-            self.settings.monday_api_url,
-            json={"query": query, "variables": variables},
-            headers={
-                "Authorization": self.settings.monday_api_token,
-                "Content-Type": "application/json",
-                "API-Version": "2024-01",
-            },
-            timeout=60,
-        )
-        try:
-            payload = response.json()
-        except ValueError:
-            payload = {"raw_response": response.text}
+        import time
+        max_retries = 3
+        backoff = 1.0
+        last_error = None
 
-        if not response.ok:
-            raise RuntimeError(
-                f"monday HTTP error {response.status_code}: {payload}"
-            )
-        if payload.get("errors"):
-            raise RuntimeError(f"monday GraphQL error: {payload['errors']}")
-        if "data" not in payload:
-            raise RuntimeError(f"monday GraphQL missing data field: {payload}")
-        return payload["data"]
+        for attempt in range(max_retries):
+            try:
+                response = requests.post(
+                    self.settings.monday_api_url,
+                    json={"query": query, "variables": variables},
+                    headers={
+                        "Authorization": self.settings.monday_api_token,
+                        "Content-Type": "application/json",
+                        "API-Version": "2024-01",
+                    },
+                    timeout=15,
+                )
+                
+                try:
+                    payload = response.json()
+                except ValueError:
+                    payload = {"raw_response": response.text}
+
+                if response.status_code == 503:
+                    last_error = f"Monday.com Service Temporarily Unavailable (503). Attempt {attempt+1}/{max_retries}"
+                    if attempt < max_retries - 1:
+                        time.sleep(backoff * (attempt + 1))
+                        continue
+                    raise RuntimeError(last_error)
+
+                if not response.ok:
+                    raise RuntimeError(
+                        f"monday HTTP error {response.status_code}: {payload}"
+                    )
+                
+                if payload.get("errors"):
+                    # Check for complexity errors or rate limits in GraphQL
+                    err_msg = str(payload['errors'])
+                    if "Complexity" in err_msg or "rate limit" in err_msg.lower():
+                        if attempt < max_retries - 1:
+                            time.sleep(backoff * (attempt + 2))
+                            continue
+                    raise RuntimeError(f"monday GraphQL error: {err_msg}")
+                
+                if "data" not in payload:
+                    raise RuntimeError(f"monday GraphQL missing data field: {payload}")
+                
+                return payload["data"]
+
+            except (requests.exceptions.RequestException, RuntimeError) as e:
+                last_error = str(e)
+                if attempt < max_retries - 1:
+                    time.sleep(backoff * (attempt + 1))
+                    continue
+                raise RuntimeError(f"Failed to communicate with Monday.com after {max_retries} attempts: {last_error}")
+
+    def _graphql_get_specific_boards(self, board_ids: list[int]) -> list[dict[str, Any]]:
+        query = """
+        query ($ids: [ID!]) {
+          boards(ids: $ids) {
+            id
+            name
+            board_kind
+            columns {
+              id
+              title
+              type
+            }
+          }
+        }
+        """
+        data = self._graphql_post(query=query, variables={"ids": [str(x) for x in board_ids]})
+        return data.get("boards", [])
 
     def _graphql_list_boards(self) -> list[dict[str, Any]]:
         query = """

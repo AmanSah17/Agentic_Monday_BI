@@ -18,6 +18,9 @@ def _after_executive_planner(state: dict[str, Any]) -> str:
 def _after_sql_guardrail(state: dict[str, Any]) -> str:
     return "blocked" if state.get("sql_validation_error") else "go"
 
+def _after_service_check(state: BIState) -> str:
+    return "down" if state.get("monday_down") else "ok"
+
 
 def build_graph(settings: AgentSettings):
     nodes = FounderBINodes(settings)
@@ -62,8 +65,24 @@ def build_graph(settings: AgentSettings):
     )
     graph.add_edge("web_researcher", "schema_discovery")
     
-    graph.add_edge("schema_discovery", "data_fetch_live")
-    graph.add_edge("data_fetch_live", "normalize_data")
+    graph.add_conditional_edges(
+        "schema_discovery",
+        _after_service_check,
+        {
+            "down": "insight_writer",
+            "ok": "data_fetch_live",
+        },
+    )
+    
+    graph.add_conditional_edges(
+        "data_fetch_live",
+        _after_service_check,
+        {
+            "down": "insight_writer",
+            "ok": "normalize_data",
+        },
+    )
+    
     graph.add_edge("normalize_data", "quality_profiler")
     graph.add_edge("quality_profiler", "text2sql_planner")
     graph.add_edge("text2sql_planner", "sql_guardrail")
